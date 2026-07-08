@@ -9,7 +9,14 @@
 
 #include <workerd/util/uuid.h>
 
+#include <kj/common.h>
+
 namespace workerd {
+
+LegacyHibernationManagerImpl::EventRegistry& LegacyHibernationManagerImpl::getEventRegistry() {
+  static const kj::EventLoopLocal<EventRegistry> registry;
+  return *registry;
+}
 
 LegacyHibernationManagerImpl::HibernatableWebSocket::HibernatableWebSocket(
     jsg::Ref<api::WebSocket> websocket,
@@ -84,7 +91,18 @@ LegacyHibernationManagerImpl::~LegacyHibernationManagerImpl() noexcept(false) {
   // Drop our outstanding tasks, the `readLoopTasks` have weak references to the
   // `HibernatableWebSockets` in `allWs`, and since we're about to drop all of those WebSockets,
   // we can't allow any more events to be delivered.
+  //
+  // Cancelling those tasks also deregisters the events they were delivering, which is why
+  // `registeredEventCount` is normally zero below.
   readLoopTasks.clear();
+
+  if (registeredEventCount > 0) {
+    // The registry holds non-owning pointers, so anything still naming this manager has to go: a
+    // surviving entry would route the next event with that ID into freed memory.
+    getEventRegistry().eraseAll(
+        [this](kj::StringPtr, RegisteredEvent& registered) { return registered.manager == this; });
+    registeredEventCount = 0;
+  }
 
   // Note that the HibernatableWebSocket destructor handles removing any references to itself in
   // `tagToWs`, and even removes the hashmap entry if there are no more entries in the bucket.
@@ -215,8 +233,97 @@ kj::Maybe<jsg::Ref<api::WebSocketRequestResponsePair>> LegacyHibernationManagerI
   return kj::none;
 }
 
+void LegacyHibernationManagerImpl::setLoopback(kj::Own<Worker::Actor::Loopback> loopback) {
+  // A loopback arriving completes any handoff in progress: the parked one belongs to a generation
+  // that is gone. Clearing the generation makes dropping that handoff's handle a no-op.
+  handoffLoopback = kj::none;
+  loopbackHandoffGeneration = 0;
+  this->loopback = loopback->addRef();
+
+  // Take the waiters before fulfilling any: fulfilling can re-enter this manager, and a re-entrant
+  // getWorkerForEvent() would append to the vector being iterated. Serve them from the reference
+  // this call owns, so a re-entrant setLoopback() cannot destroy the loopback used below.
+  auto waiters = kj::mv(loopbackWaiters);
+  for (auto& waiter: waiters) {
+    // getWorker() starts an event and can construct the actor, so skip waiters whose event has
+    // since been canceled.
+    if (!waiter.fulfiller->isWaiting()) continue;
+
+    // Hand a failure to the waiter it belongs to rather than letting it escape: we run from the
+    // actor's constructor, where a throw would fail the construction and abandon the remaining
+    // waiters with only a "fulfiller destroyed" exception to show for it.
+    KJ_IF_SOME(exception, kj::runCatchingExceptions([&]() {
+      waiter.fulfiller->fulfill(loopback->getWorker(kj::mv(waiter.metadata)));
+    })) {
+      waiter.fulfiller->reject(kj::mv(exception));
+    }
+  }
+}
+
+// Ends a loopback handoff when dropped. Holds a reference to the manager, which a code update moves
+// between actor generations, so the end of the handoff reaches it wherever it ended up.
+class LoopbackHandoff {
+ public:
+  LoopbackHandoff(kj::Own<LegacyHibernationManagerImpl> manager, uint64_t generation)
+      : manager(kj::mv(manager)),
+        generation(generation) {}
+  ~LoopbackHandoff() noexcept(false) {
+    manager->cancelLoopbackHandoff(generation);
+  }
+  KJ_DISALLOW_COPY_AND_MOVE(LoopbackHandoff);
+
+ private:
+  kj::Own<LegacyHibernationManagerImpl> manager;
+  uint64_t generation;
+};
+
+kj::Own<void> LegacyHibernationManagerImpl::beginLoopbackHandoff() {
+  KJ_REQUIRE(loopbackHandoffGeneration == 0, "a loopback handoff is already in progress");
+  loopbackHandoffGeneration = nextLoopbackHandoffGeneration++;
+  handoffLoopback = kj::mv(loopback);
+  return kj::heap<LoopbackHandoff>(kj::addRef(*this), loopbackHandoffGeneration);
+}
+
+void LegacyHibernationManagerImpl::cancelLoopbackHandoff(uint64_t generation) {
+  if (generation != loopbackHandoffGeneration) {
+    // This handle's handoff already ended, either because a replacement attached or because a
+    // later handoff superseded it. Restoring now would strand whatever is parked for the handoff
+    // currently in progress.
+    return;
+  }
+  loopbackHandoffGeneration = 0;
+  KJ_IF_SOME(previous, handoffLoopback) {
+    setLoopback(kj::mv(previous));
+  }
+}
+
 void LegacyHibernationManagerImpl::setTimerChannel(TimerChannel& timerChannel) {
   timer = timerChannel;
+}
+
+void LegacyHibernationManagerImpl::setOwningActor(Worker::Actor& actor) {
+  owningActor = actor.getWeakRef();
+  owningActorId = actor.cloneId();
+  owningHolderToken = actor.getHolderToken();
+}
+
+kj::Maybe<Worker::Actor&> LegacyHibernationManagerImpl::getOwningActor() {
+  KJ_IF_SOME(weak, owningActor) {
+    return weak->tryGet();
+  }
+  return kj::none;
+}
+
+kj::Maybe<const Worker::Actor::Id&> LegacyHibernationManagerImpl::getOwningActorId() {
+  return owningActorId;
+}
+
+kj::Maybe<uint64_t> LegacyHibernationManagerImpl::getOwningHolderToken() {
+  return owningHolderToken;
+}
+
+void LegacyHibernationManagerImpl::forgetOwningHolder() {
+  owningHolderToken = kj::none;
 }
 
 void LegacyHibernationManagerImpl::hibernateWebSockets(Worker::Lock& lock) {
@@ -241,6 +348,64 @@ kj::Maybe<uint32_t> LegacyHibernationManagerImpl::getEventTimeout() {
   return eventTimeoutMs;
 }
 
+kj::Maybe<Worker::Actor::HibernationManager&> LegacyHibernationManagerImpl::findManagerForEvent(
+    kj::StringPtr websocketId) {
+  KJ_IF_SOME(registered, getEventRegistry().find(websocketId)) {
+    return *registered.manager;
+  }
+  return kj::none;
+}
+
+LegacyHibernationManagerImpl::HibernatableWebSocket& LegacyHibernationManagerImpl::
+    takeWebSocketForEvent(kj::StringPtr websocketId) {
+  auto& registry = getEventRegistry();
+  auto& entry = KJ_REQUIRE_NONNULL(registry.findEntry(websocketId),
+      "hibernatable WebSocket event is not registered", websocketId);
+  auto& registered = entry.value;
+
+  // Nothing about the ID comes from the actor claiming the socket, so the manager holding it has
+  // to be this actor's own. Generations on different script versions are different isolates, so a
+  // stray claim would hand an actor a jsg::Ref minted in another one.
+  //
+  // Both checks are needed. The ID outlives the owning actor, so it still rejects an unrelated
+  // actor once a code update has destroyed the owner. The instance check rejects an actor that is
+  // live alongside the owner and shares its ID, which the ID alone would admit.
+  KJ_IF_SOME(claimant, IoContext::current().getActor()) {
+    KJ_IF_SOME(ownerId, registered.manager->getOwningActorId()) {
+      KJ_REQUIRE(Worker::Actor::idsEqual(ownerId, claimant.getId()),
+          "hibernatable WebSocket event ID names a socket owned by a different actor");
+    }
+    KJ_IF_SOME(owner, registered.manager->getOwningActor()) {
+      KJ_REQUIRE(&owner == &claimant,
+          "hibernatable WebSocket event ID names a socket owned by a different live actor");
+    }
+  }
+
+  --registered.manager->registeredEventCount;
+  auto& webSocket = *registered.webSocket;
+  registry.erase(entry);
+  return webSocket;
+}
+
+void LegacyHibernationManagerImpl::registerEventWebSocket(
+    kj::String websocketId, HibernatableWebSocket& hib) {
+  auto& registry = getEventRegistry();
+  KJ_ASSERT(registry.find(websocketId) == kj::none, "duplicate hibernatable WebSocket event ID",
+      websocketId);
+  registry.insert(kj::mv(websocketId), RegisteredEvent{this, &hib});
+  ++registeredEventCount;
+}
+
+void LegacyHibernationManagerImpl::cancelEvent(kj::StringPtr websocketId) {
+  auto& registry = getEventRegistry();
+  KJ_IF_SOME(entry, registry.findEntry(websocketId)) {
+    KJ_ASSERT(entry.value.manager == this,
+        "hibernatable WebSocket event registered to a different manager", websocketId);
+    --registeredEventCount;
+    registry.erase(entry);
+  }
+}
+
 void LegacyHibernationManagerImpl::dropHibernatableWebSocket(HibernatableWebSocket& hib) {
   removeFromAllWs(hib);
 }
@@ -252,11 +417,11 @@ inline void LegacyHibernationManagerImpl::removeFromAllWs(HibernatableWebSocket&
 
 kj::Promise<void> LegacyHibernationManagerImpl::handleSocketTermination(
     HibernatableWebSocket& hib, kj::Maybe<kj::Exception>& maybeError) {
-  // A failed termination event must not leave a disconnected socket in either registry.
+  // A failed termination event must not leave a disconnected socket registered.
   kj::String eventWebSocketId;
   KJ_DEFER({
     if (eventWebSocketId.size() > 0) {
-      webSocketsForEventHandler.erase(eventWebSocketId);
+      cancelEvent(eventWebSocketId);
     }
     dropHibernatableWebSocket(hib);
   });
@@ -265,7 +430,7 @@ kj::Promise<void> LegacyHibernationManagerImpl::handleSocketTermination(
   KJ_IF_SOME(error, maybeError) {
     auto websocketId = randomUUID(kj::none);
     eventWebSocketId = kj::str(websocketId);
-    webSocketsForEventHandler.insert(kj::str(websocketId), &hib);
+    registerEventWebSocket(kj::str(websocketId), hib);
     kj::Maybe<api::HibernatableSocketParams> params;
     if (!hib.hasDispatchedClose && (error.getType() == kj::Exception::Type::DISCONNECTED)) {
       // If premature disconnect/cancel, dispatch a close event if we haven't already.
@@ -279,17 +444,10 @@ kj::Promise<void> LegacyHibernationManagerImpl::handleSocketTermination(
     }
 
     KJ_REQUIRE_NONNULL(params).setTimeout(eventTimeoutMs);
-    // Dispatch the event, restoring the trace context captured at acceptWebSocket time.
-    SpanParent userSpanParent = SpanParent(nullptr);
-    KJ_IF_SOME(ctx, hib.userSpanContext) {
-      userSpanParent = SpanParent::fromSpanContext(tracing::SpanContext::clone(ctx));
-    }
-    auto workerInterface = loopback->getWorker({
-      .userSpanParent = kj::mv(userSpanParent),
-    });
+    auto workerInterface = getWorkerForEvent(hib);
     event = workerInterface
                 ->customEvent(kj::rc<api::HibernatableWebSocketCustomEvent>(
-                    hibernationEventType, kj::mv(KJ_REQUIRE_NONNULL(params)), *this)
+                    hibernationEventType, kj::mv(KJ_REQUIRE_NONNULL(params)))
                                   .toOwn())
                 .ignoreResult()
                 .attach(kj::mv(workerInterface));
@@ -300,6 +458,41 @@ kj::Promise<void> LegacyHibernationManagerImpl::handleSocketTermination(
   KJ_IF_SOME(promise, event) {
     co_await promise;
   }
+}
+
+kj::Own<WorkerInterface> LegacyHibernationManagerImpl::getWorkerForEvent(
+    HibernatableWebSocket& hib) {
+  SpanParent userSpanParent = SpanParent(nullptr);
+  KJ_IF_SOME(ctx, hib.userSpanContext) {
+    userSpanParent = SpanParent::fromSpanContext(tracing::SpanContext::clone(ctx));
+  }
+  auto metadata = IoChannelFactory::SubrequestMetadata{
+    .userSpanParent = kj::mv(userSpanParent),
+    .reresolveActorPipeline =
+        getOwningActor() == kj::none ? ReresolveActorPipeline::YES : ReresolveActorPipeline::NO,
+  };
+  KJ_IF_SOME(l, loopback) {
+    // Hold a reference across the call: getWorker() can construct the actor, which hands this
+    // manager its own loopback, destroying the one whose getWorker() is still on the stack.
+    auto owned = l->addRef();
+    return owned->getWorker(kj::mv(metadata));
+  }
+
+  auto paf = kj::newPromiseAndFulfiller<kj::Own<WorkerInterface>>();
+  kj::Promise<kj::Own<WorkerInterface>> worker = kj::mv(paf.promise);
+
+  // Don't wait for the replacement loopback indefinitely. If the timeout wins, the fulfiller stays
+  // in `loopbackWaiters` but stops waiting, and setLoopback() already skips waiters in that state.
+  KJ_IF_SOME(t, timer) {
+    worker = worker.exclusiveJoin(
+        t.afterLimitTimeout(LOOPBACK_HANDOFF_TIMEOUT).then([]() -> kj::Own<WorkerInterface> {
+      KJ_FAIL_REQUIRE("hibernatable WebSocket event gave up waiting for the replacement actor's "
+                      "loopback during a code-update handoff");
+    }));
+  }
+
+  loopbackWaiters.add(LoopbackWaiter{kj::mv(metadata), kj::mv(paf.fulfiller)});
+  return newPromisedWorkerInterface(kj::mv(worker));
 }
 
 kj::Promise<void> LegacyHibernationManagerImpl::readLoop(HibernatableWebSocket& hib) {
@@ -379,8 +572,8 @@ kj::Promise<void> LegacyHibernationManagerImpl::readLoop(HibernatableWebSocket& 
 
     auto websocketId = randomUUID(kj::none);
     auto eventWebSocketId = kj::str(websocketId);
-    webSocketsForEventHandler.insert(kj::str(websocketId), &hib);
-    KJ_DEFER(webSocketsForEventHandler.erase(eventWebSocketId));
+    registerEventWebSocket(kj::str(websocketId), hib);
+    KJ_DEFER(cancelEvent(eventWebSocketId));
 
     // Build the event params depending on what type of message we got.
     kj::Maybe<api::HibernatableSocketParams> maybeParams;
@@ -402,16 +595,9 @@ kj::Promise<void> LegacyHibernationManagerImpl::readLoop(HibernatableWebSocket& 
     auto params = kj::mv(KJ_REQUIRE_NONNULL(maybeParams));
     params.setTimeout(eventTimeoutMs);
     auto isClose = params.isCloseEvent();
-    // Dispatch the event, restoring the trace context captured at acceptWebSocket time.
-    SpanParent userSpanParent = SpanParent(nullptr);
-    KJ_IF_SOME(ctx, hib.userSpanContext) {
-      userSpanParent = SpanParent::fromSpanContext(tracing::SpanContext::clone(ctx));
-    }
-    auto workerInterface = loopback->getWorker({
-      .userSpanParent = kj::mv(userSpanParent),
-    });
+    auto workerInterface = getWorkerForEvent(hib);
     co_await workerInterface->customEvent(
-        kj::rc<api::HibernatableWebSocketCustomEvent>(hibernationEventType, kj::mv(params), *this)
+        kj::rc<api::HibernatableWebSocketCustomEvent>(hibernationEventType, kj::mv(params))
             .toOwn());
     if (isClose) {
       co_return;
