@@ -57,8 +57,8 @@ export default {
   },
 };
 
-// Find the server-side CallbackService JSRPC invocation and its two jsRpcCall spans, or return
-// null if they haven't all arrived yet. Tail events are delivered asynchronously, so callers poll.
+// Find the server dispatch and all three callback spans, or return incomplete results.
+// Tail events are delivered asynchronously, so callers poll.
 function findCallbackSpans() {
   let target = null;
   for (const data of invocations.values()) {
@@ -70,32 +70,33 @@ function findCallbackSpans() {
       break;
     }
   }
-  if (!target) return { target: null, methodSpan: null, callbackSpan: null };
+  if (!target) return { target: null, methodSpan: null, callbackSpans: [] };
 
   const jsRpcCalls = [...target.spans.entries()]
     .filter(([, s]) => s.name === 'jsRpcCall')
     .map(([spanId, s]) => ({ spanId, ...s }));
 
-  // The method dispatch span (server-side jsRpcCall for invokeCallback) and the callback
-  // invocation span (the server calling back into the client stub, target_kind=stub).
+  // Separate the invokeCallbacks server dispatch from calls through transient argument stubs.
+  // The latter cover a function, an RpcTarget, and a Proxy-of-RpcTarget.
   const methodSpan = jsRpcCalls.find(
-    (s) => s.attrs['jsrpc.method'] === 'invokeCallback'
+    (s) => s.attrs['jsrpc.method'] === 'invokeCallbacks'
   );
-  const callbackSpan = jsRpcCalls.find(
+  const callbackSpans = jsRpcCalls.filter(
     (s) => s.attrs['jsrpc.target_kind'] === 'stub'
   );
-  return { target, methodSpan, callbackSpan };
+  return { target, methodSpan, callbackSpans };
 }
 
 export const test = {
   async test() {
     const tracingEnabled = unsafe.isTestAutogateEnabled();
-    // Poll until the invocation and both spans have arrived rather than relying on a fixed delay.
+    // Poll until the expected spans arrive or, with tracing disabled, the invocation completes.
+    // Tail events are asynchronous, so avoid relying on a fixed delay.
     const deadline = Date.now() + 5000;
     let found = findCallbackSpans();
     while (
       !(tracingEnabled
-        ? found.methodSpan && found.callbackSpan
+        ? found.methodSpan && found.callbackSpans.length === 3
         : found.target?.complete) &&
       Date.now() < deadline
     ) {
@@ -103,7 +104,7 @@ export const test = {
       found = findCallbackSpans();
     }
 
-    const { target, methodSpan, callbackSpan } = found;
+    const { target, methodSpan, callbackSpans } = found;
     assert.ok(
       target,
       'Could not find the CallbackService JSRPC invocation in tail events'
@@ -118,22 +119,31 @@ export const test = {
       );
       return;
     }
-    assert.ok(methodSpan, 'Missing jsRpcCall span for invokeCallback');
-    assert.ok(
-      callbackSpan,
-      'Missing jsRpcCall span for the callback invocation (target_kind=stub)'
+    assert.ok(methodSpan, 'Missing jsRpcCall span for invokeCallbacks');
+    assert.strictEqual(
+      callbackSpans.length,
+      3,
+      'Expected function, RpcTarget, and Proxy-of-RpcTarget callback spans'
+    );
+    assert.deepStrictEqual(
+      new Set(callbackSpans.map((span) => span.attrs['jsrpc.method'])),
+      new Set(['(this)', 'invokeTarget', 'invokeProxy']),
+      'Expected one span for each transient argument call'
     );
 
-    // The core assertion: the callback jsRpcCall nests under the method jsRpcCall, not the onset.
-    assert.strictEqual(
-      callbackSpan.parentId,
-      methodSpan.spanId,
-      'Callback jsRpcCall should nest under the method jsRpcCall span, not the onset'
-    );
-    assert.notStrictEqual(
-      callbackSpan.parentId,
-      target.rootSpanId,
-      'Callback jsRpcCall must not be parented directly under the onset span'
-    );
+    // Every transient callback call must nest directly under the server method dispatch.
+    // The async continuation must not lose or replace that parent.
+    for (const callbackSpan of callbackSpans) {
+      assert.strictEqual(
+        callbackSpan.parentId,
+        methodSpan.spanId,
+        `Callback ${callbackSpan.attrs['jsrpc.method']} should nest under invokeCallbacks`
+      );
+      assert.notStrictEqual(
+        callbackSpan.parentId,
+        target.rootSpanId,
+        `Callback ${callbackSpan.attrs['jsrpc.method']} must not nest under the onset`
+      );
+    }
   },
 };
