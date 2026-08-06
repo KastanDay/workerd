@@ -4829,6 +4829,7 @@ interface Tracing {
     ...args: A
   ): T;
   startSpan(name: string): Span;
+  getActiveSpan(): Span | undefined;
   Span: typeof Span;
 }
 declare abstract class Span {

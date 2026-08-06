@@ -4563,6 +4563,7 @@ export interface Tracing {
     ...args: A
   ): T;
   startSpan(name: string): Span;
+  getActiveSpan(): Span | undefined;
   Span: typeof Span;
 }
 export declare abstract class Span {
