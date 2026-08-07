@@ -7,10 +7,14 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { DurableObject, tracing as publicTracing } from 'cloudflare:workers';
 
 assert.strictEqual(publicTracing.getActiveSpan(), undefined);
-const getActiveSpanOutsideInvocationContext = AsyncLocalStorage.bind(() => [
-  publicTracing.getActiveSpan(),
-  publicTracing.getActiveSpan(),
-]);
+assert.strictEqual(publicTracing.getInvocationSpan(), undefined);
+const getSpansOutsideInvocationContext = AsyncLocalStorage.bind(() => ({
+  active: [publicTracing.getActiveSpan(), publicTracing.getActiveSpan()],
+  invocation: [
+    publicTracing.getInvocationSpan(),
+    publicTracing.getInvocationSpan(),
+  ],
+}));
 
 export class OverlappingRequestsObject extends DurableObject {
   constructor(ctx, env) {
@@ -317,16 +321,18 @@ export const publicImportStartSpan = {
   },
 };
 
-export const getActiveSpan = {
+export const activeAndInvocationSpans = {
   async test(ctrl, env, ctx) {
     const invocationSpan = publicTracing.getActiveSpan();
     assert.ok(invocationSpan);
     assert.strictEqual(publicTracing.getActiveSpan(), invocationSpan);
     assert.strictEqual(ctx.tracing.getActiveSpan(), invocationSpan);
-    assert.deepStrictEqual(getActiveSpanOutsideInvocationContext(), [
-      undefined,
-      undefined,
-    ]);
+    assert.strictEqual(publicTracing.getInvocationSpan(), invocationSpan);
+    assert.strictEqual(ctx.tracing.getInvocationSpan(), invocationSpan);
+    const detachedSpans = getSpansOutsideInvocationContext();
+    assert.deepStrictEqual(detachedSpans.active, [undefined, undefined]);
+    assert.strictEqual(detachedSpans.invocation[0], invocationSpan);
+    assert.strictEqual(detachedSpans.invocation[1], invocationSpan);
     assert.strictEqual(invocationSpan.isTraced, true);
     invocationSpan.end();
     assert.strictEqual(invocationSpan.isTraced, true);
@@ -334,8 +340,11 @@ export const getActiveSpan = {
 
     await ctx.tracing.startActiveSpan('get-active-span-op', async (span) => {
       assert.strictEqual(publicTracing.getActiveSpan(), span);
+      assert.strictEqual(publicTracing.getInvocationSpan(), invocationSpan);
       await Promise.resolve();
       assert.strictEqual(publicTracing.getActiveSpan(), span);
+      assert.strictEqual(publicTracing.getInvocationSpan(), invocationSpan);
+      publicTracing.getInvocationSpan().setAttribute('user.id', 'user-123');
       span.setAttribute('test', 'getActiveSpan');
       span.end();
     });

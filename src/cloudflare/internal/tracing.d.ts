@@ -22,7 +22,7 @@ declare class Span {
   setAttributes(attributes: SpanAttributes): this;
 
   // Ends the span and submits its attributes to the tracing system. Idempotent. This is a no-op
-  // for the invocation span returned by getActiveSpan(), whose lifecycle is owned by the runtime.
+  // for a runtime-owned invocation span, whose lifecycle is owned by the runtime.
   end(): void;
 }
 
@@ -60,6 +60,13 @@ declare const tracing: {
   // user-created span is active. Returns undefined outside an invocation or when execution is
   // detached into the root async context.
   getActiveSpan(): Span | undefined;
+
+  // Returns the runtime-owned invocation span regardless of which user-created span is active.
+  // Returns undefined outside an invocation. The returned span can record attributes, but end()
+  // is a no-op because the runtime owns its lifecycle. In root-detached actor execution, this
+  // follows the invocation currently selected by runtime attribution, which may differ from the
+  // callback's originating invocation.
+  getInvocationSpan(): Span | undefined;
 
   // The `Span` class is exposed as a nested type so callers can reference the type via
   // `InstanceType<typeof tracing.Span>` (see `tracing-helpers.ts`).

@@ -83,8 +83,8 @@ class Span: public jsg::Object {
   // Sets each attribute in `attributes` as if by calling setAttribute().
   jsg::Ref<Span> setAttributes(jsg::Lock& js, jsg::Dict<jsg::Optional<TagValue>> attributes);
 
-  // Ends the span and submits its content to the tracing system. Idempotent. This is a no-op for
-  // the invocation span returned by getActiveSpan(), whose lifecycle is owned by the runtime.
+  // Ends the span and submits its content to the tracing system. Idempotent. This is a no-op for a
+  // runtime-owned invocation span, whose lifecycle is owned by the runtime.
   void end();
 
   JSG_RESOURCE_TYPE(Span) {
@@ -163,11 +163,20 @@ class Tracing: public jsg::Object {
   jsg::Optional<jsg::Ref<user_tracing::Span>> getActiveSpan(
       jsg::Lock& js, const jsg::TypeHandler<jsg::Ref<user_tracing::Span>>& spanHandler);
 
+  // Returns the runtime-owned invocation span regardless of which user-created span is active.
+  // Returns undefined outside an invocation. The returned span can record attributes, but end() is
+  // a no-op because the runtime owns its lifecycle. In root-detached actor execution, this follows
+  // the invocation currently selected by runtime attribution, which may differ from the callback's
+  // originating invocation.
+  jsg::Optional<jsg::Ref<user_tracing::Span>> getInvocationSpan(
+      jsg::Lock& js, const jsg::TypeHandler<jsg::Ref<user_tracing::Span>>& spanHandler);
+
   JSG_RESOURCE_TYPE(Tracing) {
     JSG_METHOD(enterSpan);
     JSG_METHOD(startActiveSpan);
     JSG_METHOD(startSpan);
     JSG_METHOD(getActiveSpan);
+    JSG_METHOD(getInvocationSpan);
 
     // Use the _NAMED variant so the property ends up as `tracing.Span` rather than
     // `tracing["user_tracing::Span"]`.
@@ -190,6 +199,7 @@ class Tracing: public jsg::Object {
       ): T;
       startSpan(name: string): Span;
       getActiveSpan(): Span | undefined;
+      getInvocationSpan(): Span | undefined;
     });
   }
 };
