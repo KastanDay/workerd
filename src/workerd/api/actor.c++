@@ -130,10 +130,14 @@ kj::Own<IoChannelFactory::SubrequestChannel> GlobalActorOutgoingFactory::getSubr
 
 kj::Own<WorkerInterface> ReplicaActorOutgoingFactory::newSingleUseClient(
     kj::Maybe<kj::String> cfStr) {
+  return newSingleUseClientWithActorRetryMetadata(kj::mv(cfStr), kj::none);
+}
+
+kj::Own<WorkerInterface> ReplicaActorOutgoingFactory::newSingleUseClientWithActorRetryMetadata(
+    kj::Maybe<kj::String> cfStr,
+    kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata) {
   auto& context = IoContext::current();
 
-  // Replica-to-primary stubs hold a pre-resolved Pipeline and cannot reroute after it breaks, so
-  // they do not opt into actor fetch retries.
   return context.getMetrics().wrapActorSubrequestClient(context.getSubrequest(
       [&](TraceContext& tracing, IoChannelFactory& ioChannelFactory) {
     tracing.setTag("objectId"_kjc, actorId.asPtr());
@@ -142,7 +146,8 @@ kj::Own<WorkerInterface> ReplicaActorOutgoingFactory::newSingleUseClient(
     // already open prior to this DO starting up.
     return actorChannel->startRequest({.cfBlobJson = kj::mv(cfStr),
       .parentSpan = tracing.getInternalSpanParent(),
-      .userSpanParent = tracing.getUserSpanParent()});
+      .userSpanParent = tracing.getUserSpanParent(),
+      .actorRetryRequestMetadata = kj::mv(actorRetryRequestMetadata)});
   },
       {.inHouse = true,
         .wrapMetrics = true,
