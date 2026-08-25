@@ -3994,9 +3994,6 @@ export interface Container {
   setInactivityTimeout(durationMs: number | bigint): Promise<void>;
   interceptOutboundHttp(addr: string, binding: Fetcher): Promise<void>;
   interceptAllOutboundHttp(binding: Fetcher): Promise<void>;
-  snapshotDirectory(
-    options: ContainerDirectorySnapshotOptions,
-  ): Promise<ContainerDirectorySnapshot>;
   snapshotContainer(
     options: ContainerSnapshotOptions,
   ): Promise<ContainerSnapshot>;
@@ -4006,10 +4003,6 @@ export interface Container {
 export interface ContainerDirectorySnapshot {
   id: string;
   size: number;
-  dir: string;
-  name?: string;
-}
-export interface ContainerDirectorySnapshotOptions {
   dir: string;
   name?: string;
 }

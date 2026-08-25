@@ -367,12 +367,12 @@ class Container: public jsg::Object {
 
     JSG_METHOD(interceptOutboundHttp);
     JSG_METHOD(interceptAllOutboundHttp);
-    JSG_METHOD(snapshotDirectory);
     JSG_METHOD(snapshotContainer);
     JSG_METHOD(interceptOutboundHttps);
     JSG_METHOD(exec);
     if (flags.getWorkerdExperimental()) {
       JSG_METHOD(interceptOutboundTcp);
+      JSG_METHOD(snapshotDirectory);
       JSG_METHOD(inspect);
       JSG_METHOD(setLabels);
     }
