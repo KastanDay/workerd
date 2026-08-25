@@ -83,8 +83,7 @@ class Span: public jsg::Object {
   // Sets each attribute in `attributes` as if by calling setAttribute().
   jsg::Ref<Span> setAttributes(jsg::Lock& js, jsg::Dict<jsg::Optional<TagValue>> attributes);
 
-  // Ends the span and submits its content to the tracing system. Idempotent. This is a no-op for
-  // the invocation span returned by getActiveSpan(), whose lifecycle is owned by the runtime.
+  // Ends the span and submits its content to the tracing system. Idempotent.
   void end();
 
   JSG_RESOURCE_TYPE(Span) {
