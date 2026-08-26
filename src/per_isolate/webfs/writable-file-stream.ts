@@ -1,10 +1,7 @@
 'use strict';
 
 // FileSystemWritableFileStream — the File System Access API's writable file
-// handle. It is a real subclass of WritableStream, which is the reason it is
-// implemented here: the C++ version subclasses the C++ WritableStream, so under
-// the `typescript_implemented_streams` flag it would inherit from the wrong
-// class and fail the brand checks that pipeTo and `instanceof` rely on.
+// handle.
 //
 // The file semantics are done by a native context obtained from
 // utils.createFileSystemWriteContext(); this module owns only the stream
@@ -12,12 +9,11 @@
 //
 // CONSTRUCTION
 //
-// Unlike DigestStream, nothing constructs this from JavaScript: the class has no
-// user-reachable constructor and instances come only from
-// FileSystemFileHandle.createWritable(). That method is a C++ JSG method, so the
-// TypeScript version is installed over it on the prototype by main.ts, and
-// createWritable() below is what runs. The C++ createWritable() stays in place
-// and is what runs when the flag is off.
+// Nothing constructs this from JavaScript: the class has no user-reachable
+// constructor and instances come only from FileSystemFileHandle.createWritable().
+// That method is a C++ JSG method, so the TypeScript version is installed over
+// it on the prototype by main.ts, and createWritable() below is what runs. The
+// C++ createWritable() stays in place and is what runs when the flag is off.
 //
 // WRITES BYPASS THE QUEUE
 //
@@ -27,10 +23,10 @@
 // a writer (or by pipeTo) go through the sink instead, which lands in the same
 // context.
 //
-// write() additionally acquires and immediately releases a writer. That looks
-// pointless but is load-bearing: acquiring is what makes a stream already locked
-// to a writer fail, and it is the C++ behavior being preserved. seek() and
-// truncate() deliberately do not do this, so they succeed on a locked stream.
+// write() additionally acquires and immediately releases a writer. Acquiring
+// is what makes a stream already locked to a writer fail, and it is the C++
+// behavior being preserved. seek() and truncate() deliberately do not do this,
+// so they succeed on a locked stream.
 //
 // TRANSACTIONAL
 //

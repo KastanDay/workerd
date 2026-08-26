@@ -15,14 +15,13 @@ false. Reimplementing the subclass in TypeScript is what restores the hierarchy.
 
 The other subclass is `DigestStream` — see `src/per_isolate/crypto/AGENTS.md`.
 
-## CONSTRUCTION RUNS THE OTHER DIRECTION
+## CONSTRUCTION
 
-`DigestStream` has a constructor, so replacing the global is enough. This class
-has none: instances come from `FileSystemFileHandle.createWritable()`, a JSG
-method on a C++ type. So `main.ts` installs two things, and both are required —
-replacing only the global leaves `createWritable()` handing back C++ instances,
-and replacing only the method leaves `instanceof` comparing against the wrong
-class.
+This class has no user-callable constructor: instances come from
+`FileSystemFileHandle.createWritable()`, a JSG method on a C++ type. So `main.ts`
+installs two things, and both are required — replacing only the global leaves
+`createWritable()` handing back C++ instances, and replacing only the method
+leaves `instanceof` comparing against the wrong class.
 
 `createWritable` is exported from `writable-file-stream.ts` and installed with
 the same property attributes `JSG_METHOD` uses, so the swap is invisible to
