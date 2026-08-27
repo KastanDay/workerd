@@ -257,8 +257,9 @@ kj::Maybe<kj::Date> WebSocket::getAutoResponseTimestamp() {
   return impl->getAutoResponseTimestamp();
 }
 
-kj::Promise<void> WebSocket::sendAutoResponse(kj::String message, kj::WebSocket& ws) {
-  return impl->sendAutoResponse(kj::mv(message), ws);
+kj::Promise<void> WebSocket::sendAutoResponse(
+    kj::String message, kj::WebSocket& ws, kj::Promise<void> writeBarrier) {
+  return impl->sendAutoResponse(kj::mv(message), ws, kj::mv(writeBarrier));
 }
 
 void WebSocket::setPeer(jsg::WeakRef<WebSocket> peer) {
@@ -1102,9 +1103,12 @@ void LegacyWebSocketAdapter::ensurePumping(jsg::Lock& js) {
   if (!native.isPumping) {
     auto& context = IoContext::current();
     auto& accepted = KJ_ASSERT_NONNULL(native.state.tryGet<Accepted>());
-    auto promise = kj::evalNow([&]() {
-      return accepted.canceler.wrap(
-          pump(context, *outgoingMessages, *accepted.ws, native, autoResponseStatus, observer));
+    auto completion = kj::newPromiseAndFulfiller<void>();
+    autoResponseStatus.maybePumpCompletion =
+        completion.promise.catch_([](kj::Exception&&) {}).fork();
+    auto promise = kj::evalNow([&, fulfiller = kj::mv(completion.fulfiller)]() mutable {
+      return accepted.canceler.wrap(pump(context, *outgoingMessages, *accepted.ws, native,
+          autoResponseStatus, observer, kj::mv(fulfiller)));
     });
 
     // TODO(cleanup): We use awaitIoLegacy() here because we don't want this to count as a pending
@@ -1167,7 +1171,8 @@ void LegacyWebSocketAdapter::ensurePumping(jsg::Lock& js) {
   }
 }
 
-kj::Promise<void> LegacyWebSocketAdapter::sendAutoResponse(kj::String message, kj::WebSocket& ws) {
+kj::Promise<void> LegacyWebSocketAdapter::sendAutoResponse(
+    kj::String message, kj::WebSocket& ws, kj::Promise<void> writeBarrier) {
   if (autoResponseStatus.isClosed) {
     return kj::READY_NOW;
   } else if (autoResponseStatus.isPumping) {
@@ -1176,7 +1181,9 @@ kj::Promise<void> LegacyWebSocketAdapter::sendAutoResponse(kj::String message, k
         AutoResponse::Pending{kj::mv(message), kj::mv(completion.fulfiller)});
     return kj::mv(completion.promise);
   } else {
-    return ws.send(message).attach(kj::mv(message));
+    return writeBarrier.then([message = kj::mv(message), &ws]() mutable {
+      return ws.send(message).attach(kj::mv(message));
+    });
   }
 }
 
@@ -1212,7 +1219,8 @@ kj::Promise<void> LegacyWebSocketAdapter::pump(IoContext& context,
     kj::WebSocket& ws,
     Native& native,
     AutoResponse& autoResponse,
-    kj::Maybe<kj::Own<WebSocketObserver>>& observer) {
+    kj::Maybe<kj::Own<WebSocketObserver>>& observer,
+    kj::Own<kj::PromiseFulfiller<void>> pumpCompletion) {
   KJ_ASSERT(!native.isPumping);
   native.isPumping = true;
   autoResponse.isPumping = true;
@@ -1243,6 +1251,9 @@ kj::Promise<void> LegacyWebSocketAdapter::pump(IoContext& context,
       // Setting `outgoingAborted` stops us from even trying to queue any more messages.
       native.outgoingAborted = true;
     }
+
+    pumpCompletion->fulfill();
+    autoResponse.maybePumpCompletion = kj::none;
   });
 
   // If we have a ongoingAutoResponse, we must co_await it here because there's a ws.send()
@@ -1597,6 +1608,7 @@ WebSocket::HibernationPackage LegacyWebSocketAdapter::buildPackageForHibernation
     .maybeTags = kj::none,
     .closedOutgoingConnection = closedOutgoingForHib,
     .allowHalfOpen = allowHalfOpen,
+    .maybePumpCompletion = kj::mv(autoResponseStatus.maybePumpCompletion),
   };
 }
 
