@@ -4125,7 +4125,7 @@ class Server::WorkerService final: public Service,
       return kj::refcounted<Worker::Actor>(*service->worker, tracker, kj::mv(actorId), true,
           kj::mv(makeActorCache), className, kj::mv(props), kj::mv(makeStorage), kj::mv(loopback),
           timerChannel, kj::refcounted<ActorObserver>(), kj::mv(manager), hibernationEventTypeId,
-          kj::mv(container), facetManager);
+          kj::mv(container), jsg::Dict<kj::String>{}, facetManager);
     }
 
     kj::Own<WorkerInterface> startRequest(

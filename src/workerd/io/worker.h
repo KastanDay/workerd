@@ -946,6 +946,7 @@ class Worker::Actor final: public kj::Refcounted {
       kj::Maybe<kj::Own<HibernationManager>> manager,
       kj::Maybe<uint16_t> hibernationEventType,
       kj::Maybe<rpc::Container::Client> container = kj::none,
+      jsg::Dict<kj::String> containerImages = jsg::Dict<kj::String>{},
       kj::Maybe<FacetManager&> facetManager = kj::none,
       kj::Maybe<ActorVersion> version = kj::none);
 

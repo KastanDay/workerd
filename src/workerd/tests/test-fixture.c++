@@ -425,7 +425,7 @@ kj::Own<Worker::Actor> TestFixture::makeActor(Worker::Actor::Id id) {
   return kj::refcounted<Worker::Actor>(*worker, /*tracker=*/kj::none, kj::mv(id),
       /*hasTransient=*/false, actorCacheFactory, /*classname=*/kj::none,
       /*props=*/Frankenvalue(), storageFactory, loopback->addRef(), *timerChannel,
-      kj::refcounted<ActorObserver>(), kj::none, kj::none);
+      kj::refcounted<ActorObserver>(), kj::none, kj::none, kj::none, jsg::Dict<kj::String>{});
 }
 
 void TestFixture::resetActor() {
