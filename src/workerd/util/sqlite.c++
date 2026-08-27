@@ -193,6 +193,12 @@ kj::String dbErrorMessage(int errorCode, sqlite3* db) {
 // exceptions through SQLite.
 static thread_local kj::Maybe<kj::Exception>* vfsErrorListener = nullptr;
 
+void tagDoSentry(kj::Exception& e) {
+  if (!e.getDescription().contains("SENTRY_DO"_kj)) {
+    e.setDescription(kj::str("SENTRY_DO ", e.getDescription()));
+  }
+}
+
 // Report that in a sqlite VFS callback, an exception was caught, and SQLITE_IOERROR is being
 // returned to SQLite.
 //
@@ -201,6 +207,7 @@ static thread_local kj::Maybe<kj::Exception>* vfsErrorListener = nullptr;
 // only the frames between the throw and the catch. We actually want to retain the full trace
 // through SQLite.
 void reportVfsErrorCaught(kj::Exception&& e) {
+  tagDoSentry(e);
   if (vfsErrorListener != nullptr) {
     // Only capture the first error; assume subsequent errors are side effects.
     if (*vfsErrorListener == kj::none) {
@@ -261,8 +268,8 @@ class SqliteCallScope {
 #define SQLITE_CALL_NODB(code, ...)                                                                \
   do {                                                                                             \
     int _ec = code;                                                                                \
-    KJ_ASSERT(                                                                                     \
-        _ec == SQLITE_OK, kj::str(sqlite3_errstr(_ec), ": ", namedErrorCode(_ec)), ##__VA_ARGS__); \
+    KJ_ASSERT(_ec == SQLITE_OK,                                                                    \
+        kj::str("SENTRY_DO ", sqlite3_errstr(_ec), ": ", namedErrorCode(_ec)), ##__VA_ARGS__);     \
   } while (false)
 
 // This version requires the scope to contain a variable named `db` which is of type sqlite3*, or
@@ -2308,6 +2315,7 @@ sqlite3_vfs SqliteDatabase::Vfs::makeKjVfs() {
 #define WRAP_METHOD(errorCode, block)                                                              \
   auto& self KJ_UNUSED = *static_cast<const SqliteDatabase::Vfs*>(vfs->pAppData);                  \
   try block catch (kj::Exception& e) {                                                             \
+    tagDoSentry(e);                                                                                \
     KJ_LOG(ERROR, "SQLite VFS I/O error", e);                                                      \
     return errorCode;                                                                              \
   }

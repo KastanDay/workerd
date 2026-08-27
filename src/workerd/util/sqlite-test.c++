@@ -1612,6 +1612,13 @@ class ErrorInjectableDirectory final: public kj::Directory, public kj::AtomicRef
   }
 };
 
+KJ_TEST("SQLite open errors are tagged for DO Sentry") {
+  auto dir = kj::newInMemoryDirectory(kj::nullClock());
+  SqliteDatabase::Vfs vfs(*dir);
+  KJ_EXPECT_THROW_MESSAGE("SENTRY_DO unable to open database file: SQLITE_CANTOPEN",
+      SqliteDatabase(vfs, kj::Path({"missing"}), kj::none));
+}
+
 KJ_TEST("SQLite memory metering enforces SQLITE_NOMEM when limit is exceeded") {
   auto dir = kj::newInMemoryDirectory(kj::nullClock());
   SqliteDatabase::Vfs vfs(*dir);
@@ -1683,7 +1690,7 @@ KJ_TEST("I/O exceptions pass through SQLite") {
 
   // It should pass through.
   KJ_EXPECT_THROW_MESSAGE(
-      "test-vfs-error", db.run({.regulator = SqliteDatabase::TRUSTED}, kj::str(R"(
+      "SENTRY_DO test-vfs-error", db.run({.regulator = SqliteDatabase::TRUSTED}, kj::str(R"(
     INSERT INTO things(value) VALUES (456);
   )")));
 }
