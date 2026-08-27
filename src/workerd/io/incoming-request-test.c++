@@ -87,6 +87,60 @@ KJ_TEST("trace onset synchronizes an idle actor's clock before reading it") {
   fixture.drainAndDestroy(kj::mv(request));
 }
 
+KJ_TEST("stateless request cancels context tasks before it stops being current") {
+  TestFixture fixture;
+  auto request = fixture.newIncomingRequest();
+  auto& context = request->getContext();
+
+  bool taskWasCanceledWhileRequestWasCurrent = false;
+  context.addTask(kj::Promise<void>(kj::NEVER_DONE).attach(kj::defer([&]() {
+    taskWasCanceledWhileRequestWasCurrent = context.hasCurrentIncomingRequest();
+  })));
+
+  fixture.drainAndDestroy(kj::mv(request));
+
+  KJ_EXPECT(taskWasCanceledWhileRequestWasCurrent);
+}
+
+KJ_TEST("stateless request reports and cancels undrained waitUntil tasks while current") {
+  TestFixture fixture;
+  auto request = fixture.newIncomingRequest();
+  auto& context = request->getContext();
+
+  bool requestWasCurrent = false;
+  context.addWaitUntil(kj::Promise<void>(kj::NEVER_DONE).attach(kj::defer([&]() {
+    requestWasCurrent = context.hasCurrentIncomingRequest();
+  })));
+
+  {
+    KJ_EXPECT_LOG(WARNING, "failed to invoke drain() on IncomingRequest before destroying it");
+    request = nullptr;
+  }
+
+  KJ_EXPECT(requestWasCurrent);
+}
+
+KJ_TEST("stateless request teardown preserves its abort reason") {
+  TestFixture fixture;
+  auto request = fixture.newIncomingRequest();
+  auto& context = request->getContext();
+  auto& waitScope = fixture.getWaitScope();
+
+  kj::Function<kj::Promise<void>()> callback;
+  context
+      .run([&callback](Worker::Lock&, IoContext& context) {
+    callback = context.makeReentryCallback(
+        [](Worker::Lock&, IoContext&) { return kj::Promise<void>(kj::NEVER_DONE); });
+  }).wait(waitScope);
+  auto pendingTask = callback();
+  KJ_EXPECT(!pendingTask.poll(waitScope));
+  context.abort(KJ_EXCEPTION(FAILED, "jsg.Error: test abort reason"));
+
+  fixture.drainAndDestroy(kj::mv(request));
+
+  KJ_EXPECT_THROW_MESSAGE("test abort reason", pendingTask.wait(waitScope));
+}
+
 // Regression test: two IncomingRequests share a single actor IoContext, as happens when a Durable
 // Object receives overlapping requests. Draining the older, superseded request hits drain()'s
 // "a newer request has taken over" early return.

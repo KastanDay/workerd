@@ -317,6 +317,25 @@ IoContext::IncomingRequest::~IoContext_IncomingRequest() noexcept(false) {
     return;
   }
 
+  const bool hadUndrainedWaitUntilTasks = !waitedForWaitUntil && !context->waitUntilTasks.isEmpty();
+
+  if (!context->isShared()) {
+    // This request owns the last reference to its IoContext. Cancel context work while the request
+    // is still current so destructors attached to that work can finish reporting spans.
+    if (!context->canceler.isEmpty()) {
+      KJ_IF_SOME(e, context->abortException) {
+        context->canceler.cancel(e);
+      } else {
+        context->canceler.cancel(JSG_KJ_EXCEPTION(
+            FAILED, Error, "The execution context responding to this call was canceled."));
+      }
+    }
+    // Promise cleanup in both task sets can access the timeout manager.
+    context->tasks.clear();
+    context->waitUntilTasks.clear();
+    context->timeoutManager->cancelAll();
+  }
+
   // Hack: We need to report an accurate time stamps for the STW outcome event, but the timer may
   // not be available when the outcome event gets reported. Define the outcome event time as the
   // time when the incoming request shuts down.
@@ -329,7 +348,7 @@ IoContext::IncomingRequest::~IoContext_IncomingRequest() noexcept(false) {
     context->limitEnforcer->reportMetrics(*metrics);
     context->lastDeliveredLocation = deliveredLocation;
 
-    if (!waitedForWaitUntil && !context->waitUntilTasks.isEmpty()) {
+    if (hadUndrainedWaitUntilTasks) {
       KJ_LOG(WARNING, "failed to invoke drain() on IncomingRequest before destroying it",
           kj::getStackTrace());
     }
