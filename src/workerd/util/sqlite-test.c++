@@ -1501,6 +1501,7 @@ class ErrorInjectableFile final: public kj::File, public kj::AtomicRefcounted {
 // kj::Directory that serves ErrorInjectableFiles to SQLite.
 class ErrorInjectableDirectory final: public kj::Directory, public kj::AtomicRefcounted {
  public:
+  kj::Maybe<kj::Exception> error;
   kj::Maybe<kj::Own<ErrorInjectableFile>> dbFile;
   kj::Maybe<kj::Own<ErrorInjectableFile>> walFile;
   kj::Maybe<kj::Own<ErrorInjectableFile>> journalFile;
@@ -1529,6 +1530,9 @@ class ErrorInjectableDirectory final: public kj::Directory, public kj::AtomicRef
   // implements kj::Directory
 
   kj::Maybe<kj::Own<const kj::ReadableFile>> tryOpenFile(kj::PathPtr path) const override {
+    KJ_IF_SOME(e, error) {
+      kj::throwFatalException(e.clone());
+    }
     return getSlot(path).map([](kj::Own<ErrorInjectableFile>& file) { return file->clone(); });
   }
 
@@ -1617,6 +1621,14 @@ KJ_TEST("SQLite open errors are tagged for DO Sentry") {
   SqliteDatabase::Vfs vfs(*dir);
   KJ_EXPECT_THROW_MESSAGE("SENTRY_DO unable to open database file: SQLITE_CANTOPEN",
       SqliteDatabase(vfs, kj::Path({"missing"}), kj::none));
+}
+
+KJ_TEST("SQLite open preserves directory VFS exceptions") {
+  auto dir = kj::atomicRefcounted<ErrorInjectableDirectory>();
+  dir->error = KJ_EXCEPTION(FAILED, "test-directory-vfs-error");
+  SqliteDatabase::Vfs vfs(*dir);
+  KJ_EXPECT_THROW_MESSAGE(
+      "SENTRY_DO test-directory-vfs-error", SqliteDatabase(vfs, kj::Path({"db"}), kj::none));
 }
 
 KJ_TEST("SQLite memory metering enforces SQLITE_NOMEM when limit is exceeded") {
