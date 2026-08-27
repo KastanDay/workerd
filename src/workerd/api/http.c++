@@ -1483,6 +1483,10 @@ class ActorFetchRetryState {
     return deadline != kj::none;
   }
 
+  CountSubrequest countSubrequest() const {
+    return CountSubrequest(attemptCount == 1);
+  }
+
   kj::Maybe<kj::Exception> checkDeadline();
   kj::OneOf<kj::Duration, kj::Exception> prepareRetry(kj::Exception exception);
 
@@ -1752,14 +1756,16 @@ jsg::Promise<jsg::Ref<Response>> fetchImplNoOutputLockAttempt(jsg::Lock& js,
   ioContext.getMetrics().setNextSubrequestBodyRewindable(SubrequestBodyRewindable(bodyRewindable));
 
   kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata;
+  auto countSubrequest = CountSubrequest::YES;
   KJ_IF_SOME(state, retryState) {
     actorRetryRequestMetadata = state.getMetadata();
+    countSubrequest = state.countSubrequest();
   }
 
   // Get client and trace context (if needed) in one clean call
   auto clientWithTracing = fetcher->getClientWithTracing(ioContext,
       jsRequest->serializeCfBlobJson(js), "fetch"_kjc,
-      kj::mv(actorRetryRequestMetadata));
+      kj::mv(actorRetryRequestMetadata), countSubrequest);
   auto traceContext = kj::mv(clientWithTracing.traceContext);
 
   // TODO(cleanup): Don't convert to HttpClient. Use the HttpService interface instead. This
@@ -2743,7 +2749,7 @@ jsg::Promise<Fetcher::ScheduledResult> Fetcher::scheduled(
 kj::Own<WorkerInterface> Fetcher::getClient(
     IoContext& ioContext, kj::Maybe<kj::String> cfStr, kj::ConstString operationName) {
   auto clientWithTracing = getClientWithTracing(
-      ioContext, kj::mv(cfStr), kj::mv(operationName), kj::none);
+      ioContext, kj::mv(cfStr), kj::mv(operationName), kj::none, CountSubrequest::YES);
   return clientWithTracing.client.attach(kj::mv(clientWithTracing.traceContext));
 }
 
@@ -2751,7 +2757,8 @@ Fetcher::ClientWithTracing Fetcher::getClientWithTracing(
     IoContext& ioContext,
     kj::Maybe<kj::String> cfStr,
     kj::ConstString operationName,
-    kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata) {
+    kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata,
+    CountSubrequest countSubrequest) {
   KJ_IF_SOME(metadata, actorRetryRequestMetadata) {
     auto& outgoingFactory = KJ_REQUIRE_NONNULL(
         channelOrClientFactory.tryGet<IoOwn<OutgoingFactory>>(),
@@ -2759,7 +2766,7 @@ Fetcher::ClientWithTracing Fetcher::getClientWithTracing(
     KJ_REQUIRE(outgoingFactory->supportsActorFetchRetries(),
         "actor retry metadata supplied to an unsupported Fetcher");
     auto client = outgoingFactory->newSingleUseClientWithActorRetryMetadata(
-        kj::mv(cfStr), kj::mv(metadata));
+        kj::mv(cfStr), kj::mv(metadata), countSubrequest);
     return ClientWithTracing{kj::mv(client), kj::none};
   }
 

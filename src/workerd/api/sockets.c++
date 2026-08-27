@@ -1158,7 +1158,7 @@ kj::Own<WorkerInterface> StreamOutgoingFactory::newSingleUseClient(kj::Maybe<kj:
   // external memory adjustment for GC pressure.
   return IoContext::current().getSubrequestNoChecks([&](auto& tracing, auto& channelFactory) {
     return kj::heap<StreamWorkerInterface>(kj::addRef(*this));
-  }, {.inHouse = false, .wrapMetrics = false});
+  }, {.inHouse = false, .wrapMetrics = false}, CountSubrequest::YES);
 }
 
 jsg::Promise<jsg::Ref<Fetcher>> SocketsModule::internalNewHttpClient(

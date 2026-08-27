@@ -100,16 +100,17 @@ void GlobalActorOutgoingFactory::onActorFetchRetry() {
 
 kj::Own<WorkerInterface> GlobalActorOutgoingFactory::newSingleUseClient(
     kj::Maybe<kj::String> cfStr) {
-  return newSingleUseClientWithActorRetryMetadata(kj::mv(cfStr), kj::none);
+  return newSingleUseClientWithActorRetryMetadata(
+      kj::mv(cfStr), kj::none, CountSubrequest::YES);
 }
 
 kj::Own<WorkerInterface> GlobalActorOutgoingFactory::newSingleUseClientWithActorRetryMetadata(
     kj::Maybe<kj::String> cfStr,
-    kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata) {
+    kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata,
+    CountSubrequest countSubrequest) {
   auto& context = IoContext::current();
 
-  return context.getMetrics().wrapActorSubrequestClient(context.getSubrequest(
-      [&](TraceContext& tracing, IoChannelFactory& ioChannelFactory) {
+  auto makeClient = [&](TraceContext& tracing, IoChannelFactory& ioChannelFactory) {
     tracing.setTag("objectId"_kjc, id->toString());
 
     return getOrCreateActorChannel(context, tracing.getInternalSpanParent())
@@ -117,10 +118,17 @@ kj::Own<WorkerInterface> GlobalActorOutgoingFactory::newSingleUseClientWithActor
           .parentSpan = tracing.getInternalSpanParent(),
           .userSpanParent = tracing.getUserSpanParent(),
           .actorRetryRequestMetadata = kj::mv(actorRetryRequestMetadata)});
-  },
-      {.inHouse = true,
-        .wrapMetrics = true,
-        .operationName = kj::ConstString("durable_object_subrequest"_kjc)}));
+  };
+  auto options = IoContext::SubrequestOptions{
+    .inHouse = true,
+    .wrapMetrics = true,
+    .operationName = kj::ConstString("durable_object_subrequest"_kjc),
+  };
+  // Retries reuse the logical fetch's initial admission, bypassing its limit check and count.
+  auto client = countSubrequest
+      ? context.getSubrequest(makeClient, kj::mv(options))
+      : context.getSubrequestNoChecks(makeClient, kj::mv(options), CountSubrequest::NO);
+  return context.getMetrics().wrapActorSubrequestClient(kj::mv(client));
 }
 
 kj::Own<IoChannelFactory::SubrequestChannel> GlobalActorOutgoingFactory::getSubrequestChannel() {

@@ -1460,7 +1460,7 @@ class Container::TcpPortOutgoingFactory final: public Fetcher::OutgoingFactory {
     return IoContext::current().getSubrequestNoChecks(
         [&](auto& tracing, auto& channelFactory) -> kj::Own<WorkerInterface> {
       return kj::heap<TcpPortWorkerInterface>(entropySource, headerTable, portState.addRef());
-    }, {.inHouse = false, .wrapMetrics = false});
+    }, {.inHouse = false, .wrapMetrics = false}, CountSubrequest::YES);
   }
 
  private:

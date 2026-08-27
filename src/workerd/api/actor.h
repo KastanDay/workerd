@@ -352,7 +352,8 @@ class GlobalActorOutgoingFactory final: public Fetcher::OutgoingFactory {
   }
   void onActorFetchRetry() override;
   kj::Own<WorkerInterface> newSingleUseClientWithActorRetryMetadata(kj::Maybe<kj::String> cfStr,
-      kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata) override;
+      kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata,
+      CountSubrequest countSubrequest) override;
   kj::Own<IoChannelFactory::SubrequestChannel> getSubrequestChannel() override;
 
  private:

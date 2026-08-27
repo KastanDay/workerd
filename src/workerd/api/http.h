@@ -248,7 +248,8 @@ class Fetcher: public JsRpcClientProvider {
     // metadata rather than silently starting a new logical call.
     virtual kj::Own<WorkerInterface> newSingleUseClientWithActorRetryMetadata(
         kj::Maybe<kj::String> cfStr,
-        kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata) {
+        kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata,
+        CountSubrequest countSubrequest) {
       KJ_FAIL_REQUIRE("actor retry metadata supplied to an unsupported Fetcher");
     }
 
@@ -310,7 +311,8 @@ class Fetcher: public JsRpcClientProvider {
   ClientWithTracing getClientWithTracing(IoContext& ioContext,
       kj::Maybe<kj::String> cfStr,
       kj::ConstString operationName,
-      kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata);
+      kj::Maybe<IoChannelFactory::ActorRetryRequestMetadata> actorRetryRequestMetadata,
+      CountSubrequest countSubrequest);
 
   bool supportsActorFetchRetries();
   void onActorFetchRetry();

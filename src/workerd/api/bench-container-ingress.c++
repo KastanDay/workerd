@@ -231,7 +231,7 @@ class DirectOutgoingFactory final: public Fetcher::OutgoingFactory {
   kj::Own<WorkerInterface> newSingleUseClient(kj::Maybe<kj::String> cfStr) override {
     return IoContext::current().getSubrequestNoChecks([this](auto& tracing, auto& channelFactory) {
       return kj::heap<DirectWorkerInterface>(client);
-    }, {.inHouse = false, .wrapMetrics = false});
+    }, {.inHouse = false, .wrapMetrics = false}, CountSubrequest::YES);
   }
 
  private:
