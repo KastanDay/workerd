@@ -6486,7 +6486,7 @@ export type ChatCompletionsCommonOptions = {
   parallel_tool_calls?: boolean;
   prediction?: PredictionContent;
   presence_penalty?: number | null;
-  reasoning_effort?: "low" | "medium" | "high" | null;
+  reasoning_effort?: "low" | "medium" | "high" | "max" | null;
   chat_template_kwargs?: ChatTemplateKwargs;
   response_format?: ResponseFormat;
   seed?: number | null;
@@ -7003,7 +7003,8 @@ export type ToolChoiceFunction = {
   type: "function";
 };
 export type ToolChoiceOptions = "none";
-export type ReasoningEffort = "minimal" | "low" | "medium" | "high" | null;
+export type ReasoningEffort =
+  "minimal" | "low" | "medium" | "high" | "max" | null;
 export type StreamOptions = {
   include_obfuscation?: boolean;
 };
