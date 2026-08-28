@@ -1,0 +1,37 @@
+types/defines/ai.d.ts
+  s_95511b80f01a15::t_2e92c31eeb9312 5992-5993
+types/generated-snapshot/experimental/index.d.ts
+  s_dfceabf84cc7b4::t_0ce9f3081f2d80 11946-11947
+types/generated-snapshot/experimental/index.ts
+  s_dfceabf84cc7b4::t_ccf4cc92b87c8d 11959-11960
+types/generated-snapshot/index.d.ts
+  s_dfceabf84cc7b4::t_4c36ec320cf686 11671-11672
+types/generated-snapshot/index.ts
+  s_dfceabf84cc7b4::t_99ae53a4e037f3 11684-11685
+types/test/types/ai.ts
+  s_95511b80f01a15::t_b691df2af1b83d 56-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "bd5f66f25b355c8e11299f4b4f94fe7d4f4f202d",
+  "prompts": {},
+  "sessions": {
+    "s_95511b80f01a15": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb5bc612dffej916H86gby6YTb",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    },
+    "s_dfceabf84cc7b4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb6359341ffes6nSWjWbP29sf1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    }
+  }
+}
