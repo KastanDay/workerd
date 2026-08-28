@@ -1630,7 +1630,10 @@ KJ_TEST("SQLite memory metering enforces SQLITE_NOMEM when limit is exceeded") {
   static constexpr size_t kTestMemoryLimit = 64 * 1024;
   SqliteDatabase db(
       vfs, kj::Path({"foo"}), kj::WriteMode::CREATE | kj::WriteMode::MODIFY, kTestMemoryLimit);
-  KJ_EXPECT_THROW_MESSAGE("out of memory: SQLITE_NOMEM", db.run("SELECT hex(zeroblob(65536))"));
+  auto maybeException = kj::runCatchingExceptions([&]() { db.run("SELECT hex(zeroblob(65536))"); });
+  auto& exception = KJ_ASSERT_NONNULL(maybeException);
+  KJ_EXPECT(exception.getDescription().contains("SENTRY_DO"), exception);
+  KJ_EXPECT(exception.getDescription().contains("out of memory: SQLITE_NOMEM"), exception);
 }
 
 KJ_TEST("SQLite memory metering tracks allocations correctly") {
@@ -1715,7 +1718,10 @@ void testCriticalError(const char* expectedErrorMessage,
   });
 
   KJ_EXPECT(!db.observedCriticalError());
-  KJ_EXPECT_THROW_MESSAGE(expectedErrorMessage, triggerErrorFn(db, vfs));
+  auto maybeException = kj::runCatchingExceptions([&]() { triggerErrorFn(db, vfs); });
+  auto& exception = KJ_ASSERT_NONNULL(maybeException);
+  KJ_EXPECT(exception.getDescription().contains("SENTRY_DO"), exception);
+  KJ_EXPECT(exception.getDescription().contains(expectedErrorMessage), exception);
 
   KJ_EXPECT(criticalErrorCallbackCalled);
   KJ_EXPECT(db.observedCriticalError());
