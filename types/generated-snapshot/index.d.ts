@@ -6200,7 +6200,7 @@ type ChatCompletionsCommonOptions = {
   parallel_tool_calls?: boolean;
   prediction?: PredictionContent;
   presence_penalty?: number | null;
-  reasoning_effort?: "low" | "medium" | "high" | "max" | null;
+  reasoning_effort?: "low" | "medium" | "high" | null;
   chat_template_kwargs?: ChatTemplateKwargs;
   response_format?: ResponseFormat;
   seed?: number | null;
@@ -6716,7 +6716,7 @@ type ToolChoiceFunction = {
   type: "function";
 };
 type ToolChoiceOptions = "none";
-type ReasoningEffort = "minimal" | "low" | "medium" | "high" | "max" | null;
+type ReasoningEffort = "minimal" | "low" | "medium" | "high" | null;
 type StreamOptions = {
   include_obfuscation?: boolean;
 };
@@ -11667,13 +11667,50 @@ declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
   inputs: ChatCompletionsInput;
   postProcessedOutputs: ChatCompletionsOutput;
 }
+type Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort =
+  "low" | "medium" | "high" | "max" | null;
+type Ai_Cf_Zai_Org_Glm_5_3_Chat_Options = Omit<
+  ChatCompletionsCommonOptions,
+  "reasoning_effort" | "chat_template_kwargs"
+> & {
+  reasoning_effort?: Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort;
+  chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
+    enable_thinking?: true;
+  };
+};
+type Ai_Cf_Zai_Org_Glm_5_3_Prompt = Ai_Cf_Zai_Org_Glm_5_3_Chat_Options & {
+  prompt: string;
+  messages?: never;
+  input?: never;
+};
+type Ai_Cf_Zai_Org_Glm_5_3_Messages = Ai_Cf_Zai_Org_Glm_5_3_Chat_Options & {
+  messages: Array<ChatCompletionMessageParam>;
+  prompt?: never;
+  input?: never;
+};
+type Ai_Cf_Zai_Org_Glm_5_3_Responses = Omit<
+  ResponsesInput,
+  "input" | "reasoning"
+> & {
+  input: string | ResponseInput;
+  reasoning?:
+    | (Omit<Reasoning, "effort"> & {
+        effort?: Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort;
+      })
+    | null;
+  prompt?: never;
+  messages?: never;
+};
+type Ai_Cf_Zai_Org_Glm_5_3_Input =
+  | Ai_Cf_Zai_Org_Glm_5_3_Prompt
+  | Ai_Cf_Zai_Org_Glm_5_3_Messages
+  | Ai_Cf_Zai_Org_Glm_5_3_Responses;
+declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
+  inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
+  postProcessedOutputs: XOR<ResponsesOutput, ChatCompletionsOutput>;
+}
 declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3_Flash {
-  inputs: XOR<
-    Omit<ResponsesInput, "input"> & {
-      input: string | ResponseInput;
-    },
-    ChatCompletionsInput
-  >;
+  inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
   postProcessedOutputs: XOR<ResponsesOutput, ChatCompletionsOutput>;
 }
 interface AiModels {
@@ -11774,6 +11811,7 @@ interface AiModels {
   "@cf/deepseek-ai/deepseek-v4-flash-0731": Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Flash_0731;
   "@cf/deepseek-ai/deepseek-v4-pro-0813": Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Pro_0813;
   "@cf/qwen/qwen3.8-27b": Base_Ai_Cf_Qwen_Qwen3_8_27B;
+  "@cf/zai-org/glm-5.3": Base_Ai_Cf_Zai_Org_Glm_5_3;
   "@cf/zai-org/glm-5.3-flash": Base_Ai_Cf_Zai_Org_Glm_5_3_Flash;
 }
 type AiOptions = {

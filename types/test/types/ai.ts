@@ -65,6 +65,35 @@ export const handler: ExportedHandler<{ AI: Ai }> = {
       await env.AI.run('@cf/zai-org/glm-5.3-flash', {
         reasoning: { effort: 'max' },
       });
+
+      await env.AI.run('@cf/zai-org/glm-5.3', {
+        prompt: 'hello',
+        reasoning_effort: 'max',
+        chat_template_kwargs: { enable_thinking: true },
+      });
+
+      await env.AI.run('@cf/zai-org/glm-5.3-flash', {
+        messages: [{ role: 'user', content: 'hello' }],
+        reasoning_effort: 'medium',
+      });
+
+      // @ts-expect-error GLM reasoning cannot be disabled.
+      await env.AI.run('@cf/zai-org/glm-5.3-flash', {
+        messages: [{ role: 'user', content: 'hello' }],
+        chat_template_kwargs: { enable_thinking: false },
+      });
+
+      // @ts-expect-error GLM does not accept the shared Responses minimal effort.
+      await env.AI.run('@cf/zai-org/glm-5.3', {
+        input: 'hello',
+        reasoning: { effort: 'minimal' },
+      });
+
+      // @ts-expect-error max is model-specific and unsupported by Qwen's shared schema.
+      await env.AI.run('@cf/qwen/qwen3.8-27b', {
+        messages: [{ role: 'user', content: 'hello' }],
+        reasoning_effort: 'max',
+      });
     }
 
     // Gateway model with gateway options
