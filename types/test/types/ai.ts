@@ -60,6 +60,11 @@ export const handler: ExportedHandler<{ AI: Ai }> = {
         reasoning: { effort: 'max' },
       });
       expectType<XOR<ResponsesOutput, ChatCompletionsOutput>>(result);
+
+      // @ts-expect-error GLM Responses requests require input.
+      await env.AI.run('@cf/zai-org/glm-5.3-flash', {
+        reasoning: { effort: 'max' },
+      });
     }
 
     // Gateway model with gateway options

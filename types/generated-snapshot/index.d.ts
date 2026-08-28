@@ -11668,7 +11668,12 @@ declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
   postProcessedOutputs: ChatCompletionsOutput;
 }
 declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3_Flash {
-  inputs: XOR<ResponsesInput, ChatCompletionsInput>;
+  inputs: XOR<
+    Omit<ResponsesInput, "input"> & {
+      input: string | ResponseInput;
+    },
+    ChatCompletionsInput
+  >;
   postProcessedOutputs: XOR<ResponsesOutput, ChatCompletionsOutput>;
 }
 interface AiModels {
