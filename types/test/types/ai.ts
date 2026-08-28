@@ -53,6 +53,15 @@ export const handler: ExportedHandler<{ AI: Ai }> = {
       expectType<Record<string, unknown>>(result);
     }
 
+    // Dual-endpoint model -- empty Responses input
+    {
+      const result = await env.AI.run('@cf/zai-org/glm-5.3-flash', {
+        input: '',
+        reasoning: { effort: 'max' },
+      });
+      expectType<XOR<ResponsesOutput, ChatCompletionsOutput>>(result);
+    }
+
     // Gateway model with gateway options
     {
       const result = await env.AI.run(
