@@ -1,0 +1,25 @@
+types/generated-snapshot/experimental/index.d.ts
+  s_dfceabf84cc7b4::t_49b6079dfb9c69 11946,11967,11970,11974
+types/generated-snapshot/experimental/index.ts
+  s_dfceabf84cc7b4::t_c8ca64fb84cb4a 11958,11981,11984,11988
+types/generated-snapshot/index.d.ts
+  s_dfceabf84cc7b4::t_f13e93828d7de7 11671,11692,11695,11699
+types/generated-snapshot/index.ts
+  s_dfceabf84cc7b4::t_5b4dc150743eac 11683,11706,11709,11713
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "c4965a57c93d50e60955945b92df0c8f2766e355",
+  "prompts": {},
+  "sessions": {
+    "s_dfceabf84cc7b4": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_fb6359341ffes6nSWjWbP29sf1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    }
+  }
+}
