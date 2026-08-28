@@ -53,22 +53,17 @@ export const handler: ExportedHandler<{ AI: Ai }> = {
       expectType<Record<string, unknown>>(result);
     }
 
-    // Dual-endpoint model -- empty Responses input
+    // GLM-5.3 variants use Chat Completions with model-specific reasoning aliases.
     {
       const result = await env.AI.run('@cf/zai-org/glm-5.3-flash', {
-        input: '',
-        reasoning: { effort: 'max' },
+        messages: [{ role: 'user', content: 'hello' }],
+        reasoning_effort: 'minimal',
       });
-      expectType<XOR<ResponsesOutput, ChatCompletionsOutput>>(result);
-
-      // @ts-expect-error GLM Responses requests require input.
-      await env.AI.run('@cf/zai-org/glm-5.3-flash', {
-        reasoning: { effort: 'max' },
-      });
+      expectType<ChatCompletionsOutput>(result);
 
       await env.AI.run('@cf/zai-org/glm-5.3', {
         prompt: 'hello',
-        reasoning_effort: 'max',
+        reasoning_effort: 'xhigh',
         chat_template_kwargs: { enable_thinking: true },
       });
 
@@ -83,10 +78,9 @@ export const handler: ExportedHandler<{ AI: Ai }> = {
         chat_template_kwargs: { enable_thinking: false },
       });
 
-      // @ts-expect-error GLM does not accept the shared Responses minimal effort.
+      // @ts-expect-error GLM-5.3 variants do not support the Responses API.
       await env.AI.run('@cf/zai-org/glm-5.3', {
         input: 'hello',
-        reasoning: { effort: 'minimal' },
       });
 
       // @ts-expect-error max is model-specific and unsupported by Qwen's shared schema.

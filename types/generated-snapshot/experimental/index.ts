@@ -11955,7 +11955,7 @@ export declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
   postProcessedOutputs: ChatCompletionsOutput;
 }
 export type Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort =
-  "low" | "medium" | "high" | "max" | null;
+  "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | null;
 export type Ai_Cf_Zai_Org_Glm_5_3_Chat_Options = Omit<
   ChatCompletionsCommonOptions,
   "reasoning_effort" | "chat_template_kwargs"
@@ -11977,30 +11977,15 @@ export type Ai_Cf_Zai_Org_Glm_5_3_Messages =
     prompt?: never;
     input?: never;
   };
-export type Ai_Cf_Zai_Org_Glm_5_3_Responses = Omit<
-  ResponsesInput,
-  "input" | "reasoning"
-> & {
-  input: string | ResponseInput;
-  reasoning?:
-    | (Omit<Reasoning, "effort"> & {
-        effort?: Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort;
-      })
-    | null;
-  prompt?: never;
-  messages?: never;
-};
 export type Ai_Cf_Zai_Org_Glm_5_3_Input =
-  | Ai_Cf_Zai_Org_Glm_5_3_Prompt
-  | Ai_Cf_Zai_Org_Glm_5_3_Messages
-  | Ai_Cf_Zai_Org_Glm_5_3_Responses;
+  Ai_Cf_Zai_Org_Glm_5_3_Prompt | Ai_Cf_Zai_Org_Glm_5_3_Messages;
 export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
   inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
-  postProcessedOutputs: XOR<ResponsesOutput, ChatCompletionsOutput>;
+  postProcessedOutputs: ChatCompletionsOutput;
 }
 export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3_Flash {
   inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
-  postProcessedOutputs: XOR<ResponsesOutput, ChatCompletionsOutput>;
+  postProcessedOutputs: ChatCompletionsOutput;
 }
 export interface AiModels {
   "@cf/huggingface/distilbert-sst-2-int8": BaseAiTextClassification;
