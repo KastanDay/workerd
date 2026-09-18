@@ -11978,8 +11978,37 @@ export declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
   inputs: ChatCompletionsInput;
   postProcessedOutputs: ChatCompletionsOutput;
 }
+export type Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort =
+  "minimal" | "low" | "medium" | "high" | "xhigh" | "max" | null;
+export type Ai_Cf_Zai_Org_Glm_5_3_Chat_Options = Omit<
+  ChatCompletionsCommonOptions,
+  "reasoning_effort" | "chat_template_kwargs"
+> & {
+  reasoning_effort?: Ai_Cf_Zai_Org_Glm_5_3_Reasoning_Effort;
+  chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
+    enable_thinking?: true;
+  };
+};
+export type Ai_Cf_Zai_Org_Glm_5_3_Prompt =
+  Ai_Cf_Zai_Org_Glm_5_3_Chat_Options & {
+    prompt: string;
+    messages?: never;
+    input?: never;
+  };
+export type Ai_Cf_Zai_Org_Glm_5_3_Messages =
+  Ai_Cf_Zai_Org_Glm_5_3_Chat_Options & {
+    messages: Array<ChatCompletionMessageParam>;
+    prompt?: never;
+    input?: never;
+  };
+export type Ai_Cf_Zai_Org_Glm_5_3_Input =
+  Ai_Cf_Zai_Org_Glm_5_3_Prompt | Ai_Cf_Zai_Org_Glm_5_3_Messages;
+export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
+  inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
+  postProcessedOutputs: ChatCompletionsOutput;
+}
 export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3_Flash {
-  inputs: ChatCompletionsInput;
+  inputs: Ai_Cf_Zai_Org_Glm_5_3_Input;
   postProcessedOutputs: ChatCompletionsOutput;
 }
 export interface AiModels {
@@ -12080,6 +12109,7 @@ export interface AiModels {
   "@cf/deepseek-ai/deepseek-v4-flash-0731": Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Flash_0731;
   "@cf/deepseek-ai/deepseek-v4-pro-0813": Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Pro_0813;
   "@cf/qwen/qwen3.8-27b": Base_Ai_Cf_Qwen_Qwen3_8_27B;
+  "@cf/zai-org/glm-5.3": Base_Ai_Cf_Zai_Org_Glm_5_3;
   "@cf/zai-org/glm-5.3-flash": Base_Ai_Cf_Zai_Org_Glm_5_3_Flash;
 }
 export type AiOptions = {
