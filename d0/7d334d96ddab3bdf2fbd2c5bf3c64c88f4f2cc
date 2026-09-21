@@ -1,0 +1,37 @@
+types/defines/ai.d.ts
+  s_8c060a2cc9af0b::t_204ffcfb3a9591 5837,5994
+types/generated-snapshot/experimental/index.d.ts
+  s_e1580a8bd1f20c::t_e716e91033d8e3 11830,12002
+types/generated-snapshot/experimental/index.ts
+  s_e1580a8bd1f20c::t_fce53757eb59e2 11842,12014
+types/generated-snapshot/index.d.ts
+  s_e1580a8bd1f20c::t_cd98ec616714b8 11547,11719
+types/generated-snapshot/index.ts
+  s_e1580a8bd1f20c::t_b6f18d75c8f522 11559,11731
+types/test/types/ai-reasoning.ts
+  s_8c060a2cc9af0b::t_f3646e5a8ff1d5 23-30,66-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "d07d334d96ddab3bdf2fbd2c5bf3c64c88f4f2cc",
+  "prompts": {},
+  "sessions": {
+    "s_8c060a2cc9af0b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c538-0268-7f41-a3d1-1ed307b4f9e7",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    },
+    "s_e1580a8bd1f20c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0c635-d333-7bd3-a95e-07155c004d5d",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    }
+  }
+}
