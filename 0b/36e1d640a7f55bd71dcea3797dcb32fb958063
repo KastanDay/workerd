@@ -1,0 +1,29 @@
+types/defines/ai.d.ts
+  s_db13ef180b319d::t_84145b2fcbbf21 5842,5848-5849,5852-5853,6107
+types/generated-snapshot/experimental/index.d.ts
+  s_db13ef180b319d::t_4e4209a757229a 11835,11844-11845,11848-11849,12117
+types/generated-snapshot/experimental/index.ts
+  s_db13ef180b319d::t_6c0550cc68ac06 11847,11856-11857,11860-11861,12129
+types/generated-snapshot/index.d.ts
+  s_db13ef180b319d::t_ff2a8ab5985a16 11552,11561-11562,11565-11566,11834
+types/generated-snapshot/index.ts
+  s_db13ef180b319d::t_9c7df3db637740 11564,11573-11574,11577-11578,11846
+types/test/types/ai-reasoning.ts
+  s_db13ef180b319d::t_66b06ab105bd05 85-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "0b36e1d640a7f55bd71dcea3797dcb32fb958063",
+  "prompts": {},
+  "sessions": {
+    "s_db13ef180b319d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f353b4a10ffejnEF4yDiZQRuoZ",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    }
+  }
+}
