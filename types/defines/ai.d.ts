@@ -6786,7 +6786,7 @@ export declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
 export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
   inputs: Omit<ChatCompletionsInput, "reasoning_effort" | "chat_template_kwargs"> & {
     /**
-     * Reasoning effort. Supported levels: max, high, low. Reasoning cannot be disabled. Compatibility aliases: none maps to max; minimal maps to max; medium maps to max; xhigh maps to max.
+     * Reasoning effort. Supported levels: max, high, low. Reasoning cannot be disabled.
      *
      * @default "max"
      */
