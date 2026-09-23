@@ -6488,15 +6488,6 @@ type WebSearchOptions = {
 // be turned off). The Workers AI SDK type generator (cloudflare/ai/sdk,
 // apps/worker-constellation-entry/scripts/build-types) turns it into the per-model
 // `inputs` types below; the developer docs model schemas come from the same metadata.
-/**
- * A reasoning effort. The listed values are suggestions: the efforts the model supports.
- * Any other string also type-checks, so new or provider-specific efforts are never blocked
- * by the types, but the model may reject or ignore values it does not support.
- */
-type AiReasoningEffortHint<Suggested extends string = never> =
-  Suggested | (string & NonNullable<unknown>);
-/** Reasoning efforts suggested for models without published reasoning metadata. */
-type ChatCompletionsReasoningEffort = "low" | "medium" | "high";
 type ChatTemplateKwargs = {
   /** Whether to enable reasoning. Support and defaults depend on the model. */
   enable_thinking?: boolean;
@@ -6520,7 +6511,7 @@ type ChatCompletionsCommonOptions = {
   prediction?: PredictionContent;
   presence_penalty?: number | null;
   /** Reasoning effort. Supported levels depend on the model. */
-  reasoning_effort?: AiReasoningEffortHint<ChatCompletionsReasoningEffort> | null;
+  reasoning_effort?: "low" | "medium" | "high" | null;
   chat_template_kwargs?: ChatTemplateKwargs;
   response_format?: ResponseFormat;
   seed?: number | null;
@@ -6643,7 +6634,7 @@ type ResponsesInput = {
   parallel_tool_calls?: boolean | null;
   previous_response_id?: string | null;
   prompt_cache_key?: string;
-  reasoning?: ResponsesInputReasoning | null;
+  reasoning?: Reasoning | null;
   safety_identifier?: string;
   service_tier?: "auto" | "default" | "flex" | "scale" | "priority" | null;
   stream?: boolean | null;
@@ -6704,16 +6695,6 @@ type ResponsePrompt = {
   } | null;
   version?: string | null;
 };
-/**
- * Reasoning options accepted in a Responses request. Unlike `Reasoning` (which responses
- * echo back), `effort` suggests the shared efforts but accepts any string, like
- * AiReasoningEffortHint (spelled out because this file cannot import it).
- */
-interface ResponsesInputReasoning extends Omit<Reasoning, "effort"> {
-  /** Reasoning effort. Supported levels depend on the model. */
-  effort?:
-    Exclude<ReasoningEffort, null> | (string & NonNullable<unknown>) | null;
-}
 type Reasoning = {
   effort?: ReasoningEffort | null;
   generate_summary?: "auto" | "concise" | "detailed" | null;
@@ -10741,13 +10722,13 @@ declare abstract class Base_Ai_Cf_Openai_Gpt_Oss_120B {
   inputs: XOR<
     Omit<ResponsesInput, "reasoning"> & {
       reasoning?:
-        | (Omit<ResponsesInputReasoning, "effort"> & {
+        | (Omit<Reasoning, "effort"> & {
             /**
-             * Reasoning effort. Supported levels: low, medium, high. Reasoning cannot be disabled.
+             * Reasoning effort. Supported levels: low, medium, high. Reasoning cannot be disabled. For compatibility, the types also accept minimal, but the model may ignore or reject it.
              *
              * @default "medium"
              */
-            effort?: AiReasoningEffortHint<"low" | "medium" | "high"> | null;
+            effort?: "minimal" | "low" | "medium" | "high" | null;
           })
         | null;
     },
@@ -10757,9 +10738,7 @@ declare abstract class Base_Ai_Cf_Openai_Gpt_Oss_120B {
        *
        * @default "medium"
        */
-      reasoning_effort?: AiReasoningEffortHint<
-        "low" | "medium" | "high"
-      > | null;
+      reasoning_effort?: "low" | "medium" | "high" | null;
       chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
         /**
          * Reasoning is always enabled for this model and cannot be disabled.
@@ -10776,13 +10755,13 @@ declare abstract class Base_Ai_Cf_Openai_Gpt_Oss_20B {
   inputs: XOR<
     Omit<ResponsesInput, "reasoning"> & {
       reasoning?:
-        | (Omit<ResponsesInputReasoning, "effort"> & {
+        | (Omit<Reasoning, "effort"> & {
             /**
-             * Reasoning effort. Supported levels: low, medium, high. Reasoning cannot be disabled.
+             * Reasoning effort. Supported levels: low, medium, high. Reasoning cannot be disabled. For compatibility, the types also accept minimal, but the model may ignore or reject it.
              *
              * @default "medium"
              */
-            effort?: AiReasoningEffortHint<"low" | "medium" | "high"> | null;
+            effort?: "minimal" | "low" | "medium" | "high" | null;
           })
         | null;
     },
@@ -10792,9 +10771,7 @@ declare abstract class Base_Ai_Cf_Openai_Gpt_Oss_20B {
        *
        * @default "medium"
        */
-      reasoning_effort?: AiReasoningEffortHint<
-        "low" | "medium" | "high"
-      > | null;
+      reasoning_effort?: "low" | "medium" | "high" | null;
       chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
         /**
          * Reasoning is always enabled for this model and cannot be disabled.
@@ -11892,9 +11869,9 @@ declare abstract class Base_Ai_Cf_Zai_Org_Glm_4_7_Flash {
     "reasoning_effort" | "chat_template_kwargs"
   > & {
     /**
-     * This model has no reasoning effort levels. Use `chat_template_kwargs.enable_thinking` to turn reasoning on or off.
+     * This model has no reasoning effort levels. Use `chat_template_kwargs.enable_thinking` to turn reasoning on or off. For compatibility, the types also accept low, medium and high, but the model may ignore or reject them.
      */
-    reasoning_effort?: AiReasoningEffortHint | null;
+    reasoning_effort?: "low" | "medium" | "high" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -11920,7 +11897,7 @@ declare abstract class Base_Ai_Cf_Moonshotai_Kimi_K2_6 {
      *
      * @default "high"
      */
-    reasoning_effort?: AiReasoningEffortHint<"high" | "none"> | null;
+    reasoning_effort?: "low" | "medium" | "high" | "none" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -11941,9 +11918,9 @@ type Ai_Cf_Google_Gemma_4_26B_A4B_It_Input = Omit<
   "reasoning_effort" | "chat_template_kwargs"
 > & {
   /**
-   * This model has no reasoning effort levels. Use `chat_template_kwargs.enable_thinking` to turn reasoning on or off.
+   * This model has no reasoning effort levels. Use `chat_template_kwargs.enable_thinking` to turn reasoning on or off. For compatibility, the types also accept low, medium and high, but the model may ignore or reject them.
    */
-  reasoning_effort?: AiReasoningEffortHint | null;
+  reasoning_effort?: "low" | "medium" | "high" | null;
   chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
     /**
      * Whether to enable reasoning for this model.
@@ -11970,9 +11947,9 @@ declare abstract class Base_Ai_Cf_Moonshotai_Kimi_K2_7_Code {
     "reasoning_effort" | "chat_template_kwargs"
   > & {
     /**
-     * This model has no reasoning effort levels. Reasoning is always enabled.
+     * This model has no reasoning effort levels. Reasoning is always enabled. For compatibility, the types also accept low, medium and high, but the model may ignore or reject them.
      */
-    reasoning_effort?: AiReasoningEffortHint | null;
+    reasoning_effort?: "low" | "medium" | "high" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Reasoning is always enabled for this model and cannot be disabled.
@@ -11994,7 +11971,7 @@ declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_2 {
      *
      * @default "max"
      */
-    reasoning_effort?: AiReasoningEffortHint<"max" | "high" | "none"> | null;
+    reasoning_effort?: "low" | "medium" | "high" | "max" | "none" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -12149,9 +12126,7 @@ declare abstract class Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Flash_0731 {
      *
      * @default "high"
      */
-    reasoning_effort?: AiReasoningEffortHint<
-      "max" | "high" | "low" | "none"
-    > | null;
+    reasoning_effort?: "low" | "medium" | "high" | "max" | "none" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -12173,9 +12148,7 @@ declare abstract class Base_Ai_Cf_Deepseek_Ai_Deepseek_V4_Pro_0813 {
      *
      * @default "high"
      */
-    reasoning_effort?: AiReasoningEffortHint<
-      "max" | "high" | "low" | "none"
-    > | null;
+    reasoning_effort?: "low" | "medium" | "high" | "max" | "none" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -12193,11 +12166,11 @@ declare abstract class Base_Ai_Cf_Qwen_Qwen3_8_27B {
     "reasoning_effort" | "chat_template_kwargs"
   > & {
     /**
-     * Reasoning effort. Supported levels: low, medium, xhigh.
+     * Reasoning effort. Supported levels: low, medium, xhigh. For compatibility, the types also accept high, but the model may ignore or reject it.
      *
      * @default "xhigh"
      */
-    reasoning_effort?: AiReasoningEffortHint<"low" | "medium" | "xhigh"> | null;
+    reasoning_effort?: "low" | "medium" | "high" | "xhigh" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Whether to enable reasoning for this model.
@@ -12215,11 +12188,11 @@ declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
     "reasoning_effort" | "chat_template_kwargs"
   > & {
     /**
-     * Reasoning effort. Supported levels: max, high, low. Reasoning cannot be disabled. Compatibility aliases: none maps to max; medium maps to max.
+     * Reasoning effort. Supported levels: max, high, low. Reasoning cannot be disabled. Compatibility aliases: none maps to max; minimal maps to max; medium maps to max; xhigh maps to max.
      *
      * @default "max"
      */
-    reasoning_effort?: AiReasoningEffortHint<"max" | "high" | "low"> | null;
+    reasoning_effort?: "low" | "medium" | "high" | "max" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Reasoning is always enabled for this model and cannot be disabled.
@@ -12241,7 +12214,7 @@ declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3_Flash {
      *
      * @default "max"
      */
-    reasoning_effort?: AiReasoningEffortHint<"max" | "high" | "low"> | null;
+    reasoning_effort?: "low" | "medium" | "high" | "max" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Reasoning is always enabled for this model and cannot be disabled.

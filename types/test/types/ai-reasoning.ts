@@ -5,80 +5,104 @@
 declare const ai: Ai;
 const messages = [{ role: 'user' as const, content: 'Hello' }];
 
-// Reasoning types suggest each model's supported efforts but never reject a
-// value that type-checked before: any string effort and any boolean
-// enable_thinking are accepted for every model.
+// Reasoning effort types are closed per-model unions: the efforts every model
+// accepted before ("low" | "medium" | "high", plus "minimal" for Responses)
+// and the model's supported efforts. They never reject a value that
+// type-checked before, and widen only by what the model actually supports.
 
 type Equal<A, B> =
   (<X>() => X extends A ? 1 : 2) extends <X>() => X extends B ? 1 : 2
     ? true
     : false;
-// The literal suggestions an effort type offers (drops the open `string` part).
-type Suggested<T> = T extends string ? (string extends T ? never : T) : never;
 type ChatEffort<Model extends keyof AiModels> =
   AiModels[Model]['inputs'] extends infer Input
     ? Input extends { reasoning_effort?: infer Effort }
-      ? Suggested<Exclude<Effort, null | undefined>>
+      ? Exclude<Effort, null | undefined>
       : never
     : never;
 type ResponsesEffort<Model extends keyof AiModels> =
   AiModels[Model]['inputs'] extends infer Input
     ? Input extends { reasoning?: infer Options }
-      ? NonNullable<Options> extends { effort?: infer Effort }
-        ? Suggested<Exclude<Effort, null | undefined>>
-        : never
+      ? // Skip XOR's Chat branch, whose `reasoning` is `never`.
+        [NonNullable<Options>] extends [never]
+        ? never
+        : NonNullable<Options> extends { effort?: infer Effort }
+          ? Exclude<Effort, null | undefined>
+          : never
       : never
     : never;
+type Legacy = 'low' | 'medium' | 'high';
 
-// Suggestions are the canonical supported efforts from model metadata.
+// Models whose supported efforts go beyond the legacy efforts gain exactly those.
 const glm52: Equal<
   ChatEffort<'@cf/zai-org/glm-5.2'>,
-  'max' | 'high' | 'none'
+  Legacy | 'max' | 'none'
 > = true;
-const qwen: Equal<
-  ChatEffort<'@cf/qwen/qwen3.8-27b'>,
-  'low' | 'medium' | 'xhigh'
+const dsv4: Equal<
+  ChatEffort<'@cf/deepseek-ai/deepseek-v4-flash-0731'>,
+  Legacy | 'max' | 'none'
 > = true;
-const gptOss: Equal<
+const glm53: Equal<ChatEffort<'@cf/zai-org/glm-5.3'>, Legacy | 'max'> = true;
+const kimi26: Equal<
+  ChatEffort<'@cf/moonshotai/kimi-k2.6'>,
+  Legacy | 'none'
+> = true;
+const qwen: Equal<ChatEffort<'@cf/qwen/qwen3.8-27b'>, Legacy | 'xhigh'> = true;
+// Models whose efforts fit inside the legacy efforts keep exactly them.
+const gptOssChat: Equal<ChatEffort<'@cf/openai/gpt-oss-20b'>, Legacy> = true;
+const gptOssResponses: Equal<
   ResponsesEffort<'@cf/openai/gpt-oss-20b'>,
-  'low' | 'medium' | 'high'
+  'minimal' | Legacy
 > = true;
-// Toggle-only models suggest no effort levels.
-const glm47: Equal<ChatEffort<'@cf/zai-org/glm-4.7-flash'>, never> = true;
-const gemma: Equal<ChatEffort<'@cf/google/gemma-4-26b-a4b-it'>, never> = true;
-// So do models whose metadata lists no efforts, even if reasoning is always on.
+const glm47: Equal<ChatEffort<'@cf/zai-org/glm-4.7-flash'>, Legacy> = true;
+const gemma: Equal<ChatEffort<'@cf/google/gemma-4-26b-a4b-it'>, Legacy> = true;
 const kimiCode: Equal<
   ChatEffort<'@cf/moonshotai/kimi-k2.7-code'>,
-  never
+  Legacy
 > = true;
-// Models without metadata keep the shared suggestions.
+// Models without reasoning metadata keep the shared type.
 const shared: Equal<
   ChatEffort<'@cf/nvidia/nemotron-3-120b-a12b'>,
-  'low' | 'medium' | 'high'
+  Legacy
 > = true;
-void [glm52, qwen, gptOss, glm47, gemma, kimiCode, shared];
+void [
+  glm52,
+  dsv4,
+  glm53,
+  kimi26,
+  qwen,
+  gptOssChat,
+  gptOssResponses,
+  glm47,
+  gemma,
+  kimiCode,
+  shared,
+];
 
-// Values outside the suggestions still type-check.
+// Supported efforts type-check.
+void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: 'max' });
+void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: 'none' });
+void ai.run('@cf/qwen/qwen3.8-27b', { messages, reasoning_effort: 'xhigh' });
+void ai.run('@cf/openai/gpt-oss-20b', {
+  input: 'Hello',
+  reasoning: { effort: 'low' },
+});
+
+// Legacy efforts still type-check for every model, supported or not.
 void ai.run('@cf/qwen/qwen3.8-27b', { messages, reasoning_effort: 'high' });
-void ai.run('@cf/qwen/qwen3.8-27b', { messages, reasoning_effort: 'none' });
 void ai.run('@cf/zai-org/glm-4.7-flash', { messages, reasoning_effort: 'low' });
-void ai.run('@cf/google/gemma-4-26b-a4b-it', {
+void ai.run('@cf/moonshotai/kimi-k2.7-code', {
   messages,
-  reasoning_effort: 'none',
+  reasoning_effort: 'medium',
 });
 void ai.run('@cf/google/gemma-4-26b-a4b-it', {
   messages,
-  reasoning_effort: 'turbo',
+  reasoning_effort: 'high',
 });
-void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: 'medium' });
 void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: null });
 void ai.run('@cf/openai/gpt-oss-20b', {
   input: 'Hello',
   reasoning: { effort: 'minimal' },
-});
-void ai.run('@cf/openai/gpt-oss-20b', {
-  input: 'Hello',
-  reasoning: { effort: 'none' },
 });
 
 // enable_thinking stays boolean, including for models with mandatory reasoning.
@@ -100,13 +124,13 @@ void ai.run('@cf/zai-org/glm-4.7-flash', {
 });
 
 // Values typed with the shared types are accepted by every model.
-declare const effort: string;
+declare const legacyEffort: Legacy;
 declare const flag: boolean;
 declare const chatInput: ChatCompletionsInput;
 declare const responsesInput: ResponsesInput;
 void ai.run('@cf/zai-org/glm-5.2', {
   messages,
-  reasoning_effort: effort,
+  reasoning_effort: legacyEffort,
   chat_template_kwargs: { enable_thinking: flag },
 });
 void ai.run('@cf/qwen/qwen3.8-27b', chatInput);
@@ -115,7 +139,7 @@ void ai.run('@cf/google/gemma-4-26b-a4b-it', chatInput);
 void ai.run('@cf/openai/gpt-oss-120b', chatInput);
 void ai.run('@cf/openai/gpt-oss-120b', responsesInput);
 const sharedReasoning: Reasoning = { effort: 'high' };
-const sharedOptions: ChatCompletionsCommonOptions = { reasoning_effort: 'max' };
+const sharedOptions: ChatCompletionsCommonOptions = { reasoning_effort: 'low' };
 const sharedKwargs: ChatTemplateKwargs = { enable_thinking: false };
 void [sharedReasoning, sharedOptions, sharedKwargs];
 
@@ -133,11 +157,37 @@ void ai.run('@cf/openai/gpt-oss-20b', {
 // The original Gemma class name remains available for existing code.
 const legacyGemma: Base_Ai_Cf_Google_Gemma_4_26B_A4B_IT['inputs'] = {
   messages,
-  reasoning_effort: 'none',
+  reasoning_effort: 'low',
 };
 const gemmaInputs: AiModels['@cf/google/gemma-4-26b-a4b-it']['inputs'] =
   legacyGemma;
 void gemmaInputs;
+
+// Efforts a model does not support, and arbitrary strings, are rejected.
+declare const anyEffort: string;
+// @ts-expect-error: GPT-OSS does not support "max"
+void ai.run('@cf/openai/gpt-oss-20b', { messages, reasoning_effort: 'max' });
+// @ts-expect-error: GLM-5.3 reasoning cannot be turned off
+void ai.run('@cf/zai-org/glm-5.3', { messages, reasoning_effort: 'none' });
+// @ts-expect-error: aliases are documented, not typed
+void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: 'xhigh' });
+// @ts-expect-error: toggle-only models gain no efforts
+void ai.run('@cf/google/gemma-4-26b-a4b-it', {
+  messages,
+  reasoning_effort: 'none',
+});
+// @ts-expect-error: unknown efforts are rejected
+void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: 'turbo' });
+// @ts-expect-error: arbitrary strings are rejected
+void ai.run('@cf/zai-org/glm-5.2', { messages, reasoning_effort: anyEffort });
+// @ts-expect-error: Responses efforts are closed too
+void ai.run('@cf/openai/gpt-oss-20b', {
+  input: 'Hello',
+  reasoning: { effort: 'none' },
+});
+// @ts-expect-error: the shared type stays closed
+const sharedMax: ChatCompletionsCommonOptions = { reasoning_effort: 'max' };
+void sharedMax;
 
 // Types still reject values of the wrong kind.
 // @ts-expect-error: efforts are strings
