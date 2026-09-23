@@ -5909,8 +5909,597 @@ export declare abstract class Base_Ai_Cf_Moonshotai_Kimi_K2_6 {
   };
   postProcessedOutputs: ChatCompletionsOutput;
 }
+export type Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Input =
+  | Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Prompt
+  | Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Messages;
+
+export interface Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Prompt {
+  /**
+   * ID of the model to use (for example, '@cf/nvidia/nemotron-3-120b-a12b').
+   */
+  model?: string;
+  audio?: {
+    voice:
+      | string
+      | {
+          id: string;
+        };
+    format: "wav" | "aac" | "mp3" | "flac" | "opus" | "pcm16";
+  };
+  /**
+   * Penalizes new tokens based on their existing frequency in the text so far.
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Modify the likelihood of specified tokens appearing in the completion. Maps token IDs to bias values from -100 to 100.
+   */
+  logit_bias?: {} | null;
+  /**
+   * Whether to return log probabilities of the output tokens.
+   */
+  logprobs?: boolean | null;
+  /**
+   * How many top log probabilities to return at each token position (0-20). Requires logprobs=true.
+   */
+  top_logprobs?: number | null;
+  /**
+   * The maximum number of tokens to generate.
+   */
+  max_tokens?: number | null;
+  /**
+   * An upper bound for the number of tokens that can be generated for a completion.
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Set of key-value pairs that can be attached to the object.
+   */
+  metadata?: {} | null;
+  /**
+   * Output types requested from the model.
+   */
+  modalities?: ("text" | "audio")[] | null;
+  /**
+   * How many chat completion choices to generate for each input message.
+   */
+  n?: number | null;
+  /**
+   * Whether to enable parallel function calling during tool use.
+   */
+  parallel_tool_calls?: boolean;
+  prediction?: {
+    type: "content";
+    content:
+      | string
+      | {
+          type: "text";
+          text: string;
+        }[];
+  };
+  /**
+   * Penalizes new tokens based on whether they appear in the text so far.
+   */
+  presence_penalty?: number | null;
+  /**
+   * Nemotron chat-template controls for normal reasoning, low-effort reasoning, and non-reasoning responses.
+   */
+  chat_template_kwargs?: {
+    /**
+     * Whether to enable reasoning. Reasoning is enabled by default.
+     */
+    enable_thinking?: boolean;
+    /**
+     * When reasoning is enabled, use Nemotron's low-effort reasoning mode, which uses significantly fewer reasoning tokens.
+     */
+    low_effort?: boolean;
+    /**
+     * For coding agents, force non-empty assistant content.
+     */
+    force_nonempty_content?: boolean;
+  };
+  response_format?:
+    | {
+        type: "text";
+      }
+    | {
+        type: "json_object";
+      }
+    | {
+        type: "json_schema";
+        json_schema: {
+          name: string;
+          description?: string;
+          schema?: object;
+          strict?: boolean | null;
+        };
+      };
+  /**
+   * If specified, the system will make a best effort to sample deterministically.
+   */
+  seed?: number | null;
+  /**
+   * Up to 4 sequences where the API will stop generating further tokens.
+   */
+  stop?: null | string | string[];
+  /**
+   * Whether to store the output for model distillation or evaluation.
+   */
+  store?: boolean | null;
+  /**
+   * If true, partial message deltas will be sent as server-sent events.
+   */
+  stream?: boolean | null;
+  stream_options?: {
+    include_usage?: boolean;
+    include_obfuscation?: boolean;
+  };
+  /**
+   * Sampling temperature between 0 and 2.
+   */
+  temperature?: number | null;
+  tool_choice?:
+    | ("none" | "auto" | "required")
+    | {
+        type: "function";
+        function: {
+          name: string;
+        };
+      }
+    | {
+        type: "custom";
+        custom: {
+          name: string;
+        };
+      }
+    | {
+        type: "allowed_tools";
+        allowed_tools: {
+          mode: "auto" | "required";
+          tools: {}[];
+        };
+      };
+  /**
+   * A list of tools the model may call.
+   */
+  tools?: (
+    | {
+        type: "function";
+        function: {
+          /**
+           * The name of the function to be called.
+           */
+          name: string;
+          /**
+           * A description of what the function does.
+           */
+          description?: string;
+          /**
+           * The parameters the function accepts, described as a JSON Schema object.
+           */
+          parameters?: object;
+          /**
+           * Whether to enable strict schema adherence.
+           */
+          strict?: boolean | null;
+        };
+      }
+    | {
+        type: "custom";
+        custom: {
+          name: string;
+          description?: string;
+          format?:
+            | {
+                type: "text";
+              }
+            | {
+                type: "grammar";
+                grammar: {
+                  definition: string;
+                  syntax: "lark" | "regex";
+                };
+              };
+        };
+      }
+  )[];
+  /**
+   * Nucleus sampling: considers the results of the tokens with top_p probability mass.
+   */
+  top_p?: number | null;
+  /**
+   * A unique identifier representing your end-user, for abuse monitoring.
+   */
+  user?: string;
+  web_search_options?: {
+    search_context_size?: "low" | "medium" | "high";
+    user_location?: {
+      type: "approximate";
+      approximate: {
+        city?: string;
+        country?: string;
+        region?: string;
+        timezone?: string;
+      };
+    };
+  };
+  function_call?:
+    | ("none" | "auto")
+    | {
+        name: string;
+      };
+  /**
+   * @minItems 1
+   * @maxItems 128
+   */
+  functions?: {
+    /**
+     * The name of the function to be called.
+     */
+    name: string;
+    /**
+     * A description of what the function does.
+     */
+    description?: string;
+    /**
+     * The parameters the function accepts, described as a JSON Schema object.
+     */
+    parameters?: object;
+    /**
+     * Whether to enable strict schema adherence.
+     */
+    strict?: boolean | null;
+  }[];
+  /**
+   * The input text prompt for the model to generate a response.
+   */
+  prompt: string;
+}
+export interface Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Messages {
+  /**
+   * ID of the model to use (for example, '@cf/nvidia/nemotron-3-120b-a12b').
+   */
+  model?: string;
+  audio?: {
+    voice:
+      | string
+      | {
+          id: string;
+        };
+    format: "wav" | "aac" | "mp3" | "flac" | "opus" | "pcm16";
+  };
+  /**
+   * Penalizes new tokens based on their existing frequency in the text so far.
+   */
+  frequency_penalty?: number | null;
+  /**
+   * Modify the likelihood of specified tokens appearing in the completion. Maps token IDs to bias values from -100 to 100.
+   */
+  logit_bias?: {} | null;
+  /**
+   * Whether to return log probabilities of the output tokens.
+   */
+  logprobs?: boolean | null;
+  /**
+   * How many top log probabilities to return at each token position (0-20). Requires logprobs=true.
+   */
+  top_logprobs?: number | null;
+  /**
+   * The maximum number of tokens to generate.
+   */
+  max_tokens?: number | null;
+  /**
+   * An upper bound for the number of tokens that can be generated for a completion.
+   */
+  max_completion_tokens?: number | null;
+  /**
+   * Set of key-value pairs that can be attached to the object.
+   */
+  metadata?: {} | null;
+  /**
+   * Output types requested from the model.
+   */
+  modalities?: ("text" | "audio")[] | null;
+  /**
+   * How many chat completion choices to generate for each input message.
+   */
+  n?: number | null;
+  /**
+   * Whether to enable parallel function calling during tool use.
+   */
+  parallel_tool_calls?: boolean;
+  prediction?: {
+    type: "content";
+    content:
+      | string
+      | {
+          type: "text";
+          text: string;
+        }[];
+  };
+  /**
+   * Penalizes new tokens based on whether they appear in the text so far.
+   */
+  presence_penalty?: number | null;
+  /**
+   * Nemotron chat-template controls for normal reasoning, low-effort reasoning, and non-reasoning responses.
+   */
+  chat_template_kwargs?: {
+    /**
+     * Whether to enable reasoning. Reasoning is enabled by default.
+     */
+    enable_thinking?: boolean;
+    /**
+     * When reasoning is enabled, use Nemotron's low-effort reasoning mode, which uses significantly fewer reasoning tokens.
+     */
+    low_effort?: boolean;
+    /**
+     * For coding agents, force non-empty assistant content.
+     */
+    force_nonempty_content?: boolean;
+  };
+  response_format?:
+    | {
+        type: "text";
+      }
+    | {
+        type: "json_object";
+      }
+    | {
+        type: "json_schema";
+        json_schema: {
+          name: string;
+          description?: string;
+          schema?: object;
+          strict?: boolean | null;
+        };
+      };
+  /**
+   * If specified, the system will make a best effort to sample deterministically.
+   */
+  seed?: number | null;
+  /**
+   * Up to 4 sequences where the API will stop generating further tokens.
+   */
+  stop?: null | string | string[];
+  /**
+   * Whether to store the output for model distillation or evaluation.
+   */
+  store?: boolean | null;
+  /**
+   * If true, partial message deltas will be sent as server-sent events.
+   */
+  stream?: boolean | null;
+  stream_options?: {
+    include_usage?: boolean;
+    include_obfuscation?: boolean;
+  };
+  /**
+   * Sampling temperature between 0 and 2.
+   */
+  temperature?: number | null;
+  tool_choice?:
+    | ("none" | "auto" | "required")
+    | {
+        type: "function";
+        function: {
+          name: string;
+        };
+      }
+    | {
+        type: "custom";
+        custom: {
+          name: string;
+        };
+      }
+    | {
+        type: "allowed_tools";
+        allowed_tools: {
+          mode: "auto" | "required";
+          tools: {}[];
+        };
+      };
+  /**
+   * A list of tools the model may call.
+   */
+  tools?: (
+    | {
+        type: "function";
+        function: {
+          /**
+           * The name of the function to be called.
+           */
+          name: string;
+          /**
+           * A description of what the function does.
+           */
+          description?: string;
+          /**
+           * The parameters the function accepts, described as a JSON Schema object.
+           */
+          parameters?: object;
+          /**
+           * Whether to enable strict schema adherence.
+           */
+          strict?: boolean | null;
+        };
+      }
+    | {
+        type: "custom";
+        custom: {
+          name: string;
+          description?: string;
+          format?:
+            | {
+                type: "text";
+              }
+            | {
+                type: "grammar";
+                grammar: {
+                  definition: string;
+                  syntax: "lark" | "regex";
+                };
+              };
+        };
+      }
+  )[];
+  /**
+   * Nucleus sampling: considers the results of the tokens with top_p probability mass.
+   */
+  top_p?: number | null;
+  /**
+   * A unique identifier representing your end-user, for abuse monitoring.
+   */
+  user?: string;
+  web_search_options?: {
+    search_context_size?: "low" | "medium" | "high";
+    user_location?: {
+      type: "approximate";
+      approximate: {
+        city?: string;
+        country?: string;
+        region?: string;
+        timezone?: string;
+      };
+    };
+  };
+  function_call?:
+    | ("none" | "auto")
+    | {
+        name: string;
+      };
+  /**
+   * @minItems 1
+   * @maxItems 128
+   */
+  functions?: {
+    /**
+     * The name of the function to be called.
+     */
+    name: string;
+    /**
+     * A description of what the function does.
+     */
+    description?: string;
+    /**
+     * The parameters the function accepts, described as a JSON Schema object.
+     */
+    parameters?: object;
+    /**
+     * Whether to enable strict schema adherence.
+     */
+    strict?: boolean | null;
+  }[];
+  /**
+   * A list of messages comprising the conversation so far.
+   *
+   * @minItems 1
+   */
+  messages: (
+    | {
+        role: "developer";
+        content:
+          | string
+          | {
+              type: "text";
+              text: string;
+            }[];
+        name?: string;
+      }
+    | {
+        role: "system";
+        content:
+          | string
+          | {
+              type: "text";
+              text: string;
+            }[];
+        name?: string;
+      }
+    | {
+        role: "user";
+        content:
+          | string
+          | {
+              type: "text" | "image_url" | "video_url" | "input_audio" | "file";
+              text?: string;
+              image_url?: {
+                url?: string;
+                detail?: "auto" | "low" | "high";
+              };
+              video_url?: {
+                url?: string;
+              };
+              input_audio?: {
+                data?: string;
+                format?: "wav" | "mp3";
+              };
+              file?: {
+                file_data?: string;
+                file_id?: string;
+                filename?: string;
+              };
+            }[];
+        name?: string;
+      }
+    | {
+        role: "assistant";
+        content?:
+          | string
+          | null
+          | {
+              type: "text" | "refusal";
+              text?: string;
+              refusal?: string;
+            }[];
+        refusal?: string | null;
+        name?: string;
+        audio?: {
+          id: string;
+        };
+        tool_calls?: (
+          | {
+              id: string;
+              type: "function";
+              function: {
+                name: string;
+                /**
+                 * JSON-encoded arguments string.
+                 */
+                arguments: string;
+              };
+            }
+          | {
+              id: string;
+              type: "custom";
+              custom: {
+                name: string;
+                input: string;
+              };
+            }
+        )[];
+        function_call?: {
+          name: string;
+          arguments: string;
+        };
+      }
+    | {
+        role: "tool";
+        content:
+          | string
+          | {
+              type: "text";
+              text: string;
+            }[];
+        tool_call_id: string;
+      }
+    | {
+        role: "function";
+        content: string;
+        name: string;
+      }
+  )[];
+}
 export declare abstract class Base_Ai_Cf_Nvidia_Nemotron_3_120B_A12B {
-  inputs: ChatCompletionsInput;
+  inputs: Ai_Cf_Nvidia_Nemotron_3_120B_A12B_Input;
   postProcessedOutputs: ChatCompletionsOutput;
 }
 export type Ai_Cf_Google_Gemma_4_26B_A4B_It_Input = Omit<
@@ -5941,6 +6530,33 @@ export declare abstract class Base_Ai_Cf_Google_Gemma_4_26B_A4B_It {
 }
 /** @deprecated Use Base_Ai_Cf_Google_Gemma_4_26B_A4B_It. */
 export declare abstract class Base_Ai_Cf_Google_Gemma_4_26B_A4B_IT extends Base_Ai_Cf_Google_Gemma_4_26B_A4B_It {}
+export type Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B_Input =
+  | {
+      /**
+       * readable stream with audio data and content-type specified for that data
+       */
+      audio: {
+        body: object;
+        contentType: string;
+      };
+    }
+  | {
+      /**
+       * base64 encoded audio data
+       */
+      audio: string;
+      encoding?: "wav" | "flac" | "ogg" | "linear16";
+      sample_rate?: number;
+      channels?: number;
+    };
+export interface Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B_Output {
+  text?: string;
+  duration?: number;
+}
+export declare abstract class Base_Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B {
+  inputs: Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B_Input;
+  postProcessedOutputs: Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B_Output;
+}
 export declare abstract class Base_Ai_Cf_Moonshotai_Kimi_K2_7_Code {
   inputs: Omit<ChatCompletionsInput, "reasoning_effort" | "chat_template_kwargs"> & {
     /**
@@ -6174,14 +6790,14 @@ export declare abstract class Base_Ai_Cf_Zai_Org_Glm_5_3 {
      *
      * @default "max"
      */
-    reasoning_effort?: "low" | "medium" | "high" | "max" | null;
+    reasoning_effort?: "max" | "high" | "low" | null;
     chat_template_kwargs?: Omit<ChatTemplateKwargs, "enable_thinking"> & {
       /**
        * Reasoning is always enabled for this model and cannot be disabled.
        *
        * @default true
        */
-      enable_thinking?: boolean;
+      enable_thinking?: true;
     };
   };
   postProcessedOutputs: ChatCompletionsOutput;
@@ -6210,7 +6826,6 @@ export interface AiModels {
   "@cf/huggingface/distilbert-sst-2-int8": BaseAiTextClassification;
   "@cf/stabilityai/stable-diffusion-xl-base-1.0": BaseAiTextToImage;
   "@cf/runwayml/stable-diffusion-v1-5-inpainting": BaseAiTextToImage;
-  "@cf/runwayml/stable-diffusion-v1-5-img2img": BaseAiTextToImage;
   "@cf/lykon/dreamshaper-8-lcm": BaseAiTextToImage;
   "@cf/bytedance/stable-diffusion-xl-lightning": BaseAiTextToImage;
   "@cf/myshell-ai/melotts": BaseAiTextToSpeech;
@@ -6298,6 +6913,7 @@ export interface AiModels {
   "@cf/moonshotai/kimi-k2.6": Base_Ai_Cf_Moonshotai_Kimi_K2_6;
   "@cf/nvidia/nemotron-3-120b-a12b": Base_Ai_Cf_Nvidia_Nemotron_3_120B_A12B;
   "@cf/google/gemma-4-26b-a4b-it": Base_Ai_Cf_Google_Gemma_4_26B_A4B_It;
+  "@cf/nvidia/nemotron-speech-streaming-en-0.6b": Base_Ai_Cf_Nvidia_Nemotron_Speech_Streaming_En_0_6B;
   "@cf/moonshotai/kimi-k2.7-code": Base_Ai_Cf_Moonshotai_Kimi_K2_7_Code;
   "@cf/zai-org/glm-5.2": Base_Ai_Cf_Zai_Org_Glm_5_2;
   "@cf/moondream/moondream3.1-9B-A2B": Base_Ai_Cf_Moondream_Moondream3_1_9B_A2B;
