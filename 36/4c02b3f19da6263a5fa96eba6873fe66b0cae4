@@ -1,0 +1,27 @@
+types/defines/ai.d.ts
+  s_a35168d19c096d::t_92d182ced71913 6789
+types/generated-snapshot/experimental/index.d.ts
+  s_a35168d19c096d::t_3f5e941d8e17ff 12806
+types/generated-snapshot/experimental/index.ts
+  s_a35168d19c096d::t_4b5553df70880f 12818
+types/generated-snapshot/index.d.ts
+  s_a35168d19c096d::t_1711837dcc0a83 12523
+types/generated-snapshot/index.ts
+  s_a35168d19c096d::t_4c7543bf7d49da 12535
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "364c02b3f19da6263a5fa96eba6873fe66b0cae4",
+  "prompts": {},
+  "sessions": {
+    "s_a35168d19c096d": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_f35ddf4c6ffewslpMjTQpy2TCt",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Kastan Day <kastanvday@gmail.com>"
+    }
+  }
+}
